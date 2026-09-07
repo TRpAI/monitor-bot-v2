@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { Server, Globe, Zap, Bot, ArrowUpRight, AlertCircle, CheckCircle, RefreshCw } from 'lucide-react';
 import { SystemOverview, Incident } from '../types';
 
@@ -10,7 +10,7 @@ interface StatusBannerProps {
   onViewIncidents: () => void;
 }
 
-export const StatusBanner: React.FC<StatusBannerProps> = ({
+export const StatusBanner: React.FC<StatusBannerProps> = memo(({
   overview,
   activeIncidents,
   onTriggerTgSync,
@@ -167,4 +167,4 @@ export const StatusBanner: React.FC<StatusBannerProps> = ({
       </div>
     </div>
   );
-};
+});

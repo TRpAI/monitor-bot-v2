@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { Globe, CheckCircle2, AlertTriangle, XCircle, ShieldCheck, RefreshCw, ExternalLink, Zap } from 'lucide-react';
 import { WebService } from '../types';
 
@@ -7,7 +7,7 @@ interface ServiceListProps {
   onCheckService: (serviceId: string) => Promise<void>;
 }
 
-export const ServiceList: React.FC<ServiceListProps> = ({ services, onCheckService }) => {
+export const ServiceList: React.FC<ServiceListProps> = memo(({ services, onCheckService }) => {
   const [checkingId, setCheckingId] = useState<string | null>(null);
   const [hoveredDay, setHoveredDay] = useState<{ date: string; uptime: number; serviceId: string } | null>(null);
 
@@ -17,13 +17,16 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onCheckServi
     setCheckingId(null);
   };
 
-  // Group services
-  const grouped: Record<string, WebService[]> = {};
-  for (const svc of services) {
-    const grp = svc.group || '其他服务';
-    if (!grouped[grp]) grouped[grp] = [];
-    grouped[grp].push(svc);
-  }
+  // Memoize grouped services
+  const grouped = useMemo<Record<string, WebService[]>>(() => {
+    const map: Record<string, WebService[]> = {};
+    for (const svc of services) {
+      const grp = svc.group || '其他服务';
+      if (!map[grp]) map[grp] = [];
+      map[grp].push(svc);
+    }
+    return map;
+  }, [services]);
 
   const getStatusIcon = (status: WebService['status']) => {
     switch (status) {
@@ -68,7 +71,7 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onCheckServi
 
       {/* Grouped Service Cards */}
       <div className="space-y-6">
-        {Object.entries(grouped).map(([groupName, svcs]) => (
+        {(Object.entries(grouped) as [string, WebService[]][]).map(([groupName, svcs]) => (
           <div key={groupName} className="space-y-3">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 flex items-center gap-2">
               <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
@@ -190,4 +193,4 @@ export const ServiceList: React.FC<ServiceListProps> = ({ services, onCheckServi
       </div>
     </section>
   );
-};
+});

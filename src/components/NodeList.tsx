@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, memo } from 'react';
 import { Server, Cpu, HardDrive, ArrowUp, ArrowDown, Thermometer, Wifi, Search, Filter, LayoutGrid, List, ChevronRight, Bot } from 'lucide-react';
 import { MonitorNode } from '../types';
 
@@ -17,7 +17,7 @@ const countryFlagMap: Record<string, string> = {
   UN: '🌐',
 };
 
-export const NodeList: React.FC<NodeListProps> = ({ nodes, onSelectNode }) => {
+export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
@@ -337,4 +337,4 @@ export const NodeList: React.FC<NodeListProps> = ({ nodes, onSelectNode }) => {
       )}
     </section>
   );
-};
+});

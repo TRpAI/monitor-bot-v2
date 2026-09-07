@@ -1,17 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
 import { Header } from './components/Header';
 import { StatusBanner } from './components/StatusBanner';
 import { NodeList } from './components/NodeList';
-import { NodeDetailModal } from './components/NodeDetailModal';
 import { ServiceList } from './components/ServiceList';
 import { IncidentSection } from './components/IncidentSection';
-import { AdminLoginModal } from './components/AdminLoginModal';
-import { DownloadModal } from './components/DownloadModal';
-import { AdminDashboard } from './components/admin/AdminDashboard';
 import { Footer } from './components/Footer';
 import { api } from './api';
 import { MonitorNode, WebService, Incident, TelegramBotConfig, SystemOverview } from './types';
 import { initialNodes, initialServices, initialIncidents, initialTelegramConfig } from './mockData';
+
+// Code-split heavy modals and administration panel
+const NodeDetailModal = lazy(() => import('./components/NodeDetailModal').then(m => ({ default: m.NodeDetailModal })));
+const AdminLoginModal = lazy(() => import('./components/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
+const DownloadModal = lazy(() => import('./components/DownloadModal').then(m => ({ default: m.DownloadModal })));
+const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
 
 export default function App() {
   const [overview, setOverview] = useState<SystemOverview>({
@@ -228,32 +230,41 @@ export default function App() {
   // If viewing Admin Console
   if (isAdminView) {
     return (
-      <AdminDashboard
-        overview={overview}
-        nodes={nodes}
-        services={services}
-        incidents={incidents}
-        telegramConfig={telegramConfig}
-        onSaveTelegramConfig={handleSaveTelegramConfig}
-        onTestBot={handleTestBot}
-        onSendAlert={handleSendAlert}
-        onSaveNode={handleSaveNode}
-        onDeleteNode={handleDeleteNode}
-        onSaveService={handleSaveService}
-        onDeleteService={handleDeleteService}
-        onSaveIncident={handleSaveIncident}
-        onDeleteIncident={handleDeleteIncident}
-        onTriggerSync={handleTriggerTgSync}
-        onBackToPublic={() => setIsAdminView(false)}
-        onExportData={handleExportData}
-        onImportData={handleImportData}
-        onOpenDownload={() => setIsDownloadModalOpen(true)}
-      />
+      <Suspense
+        fallback={
+          <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-slate-400 font-mono text-sm">
+            <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
+            <p>正在按需加载管理控制台...</p>
+          </div>
+        }
+      >
+        <AdminDashboard
+          overview={overview}
+          nodes={nodes}
+          services={services}
+          incidents={incidents}
+          telegramConfig={telegramConfig}
+          onSaveTelegramConfig={handleSaveTelegramConfig}
+          onTestBot={handleTestBot}
+          onSendAlert={handleSendAlert}
+          onSaveNode={handleSaveNode}
+          onDeleteNode={handleDeleteNode}
+          onSaveService={handleSaveService}
+          onDeleteService={handleDeleteService}
+          onSaveIncident={handleSaveIncident}
+          onDeleteIncident={handleDeleteIncident}
+          onTriggerSync={handleTriggerTgSync}
+          onBackToPublic={() => setIsAdminView(false)}
+          onExportData={handleExportData}
+          onImportData={handleImportData}
+          onOpenDownload={() => setIsDownloadModalOpen(true)}
+        />
+      </Suspense>
     );
   }
 
-  // Active incidents list
-  const activeIncidents = incidents.filter(i => i.status !== 'resolved');
+  // Active incidents list (memoized)
+  const activeIncidents = useMemo(() => incidents.filter(i => i.status !== 'resolved'), [incidents]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
@@ -312,29 +323,41 @@ export default function App() {
         onOpenDownload={() => setIsDownloadModalOpen(true)}
       />
 
-      {/* Project Download Modal */}
-      <DownloadModal
-        isOpen={isDownloadModalOpen}
-        onClose={() => setIsDownloadModalOpen(false)}
-        totalNodes={nodes.length}
-        totalServices={services.length}
-      />
+      {/* Project Download Modal (Lazy loaded on demand) */}
+      {isDownloadModalOpen && (
+        <Suspense fallback={null}>
+          <DownloadModal
+            isOpen={isDownloadModalOpen}
+            onClose={() => setIsDownloadModalOpen(false)}
+            totalNodes={nodes.length}
+            totalServices={services.length}
+          />
+        </Suspense>
+      )}
 
-      {/* Node Detail Drawer / Modal */}
-      <NodeDetailModal
-        node={selectedNode}
-        onClose={() => setSelectedNode(null)}
-      />
+      {/* Node Detail Drawer / Modal (Lazy loaded on demand) */}
+      {selectedNode && (
+        <Suspense fallback={null}>
+          <NodeDetailModal
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+          />
+        </Suspense>
+      )}
 
-      {/* Admin Login Modal */}
-      <AdminLoginModal
-        isOpen={isAdminLoginOpen}
-        onClose={() => setIsAdminLoginOpen(false)}
-        onLoginSuccess={() => {
-          setIsAdminLoggedIn(true);
-          setIsAdminView(true);
-        }}
-      />
+      {/* Admin Login Modal (Lazy loaded on demand) */}
+      {isAdminLoginOpen && (
+        <Suspense fallback={null}>
+          <AdminLoginModal
+            isOpen={isAdminLoginOpen}
+            onClose={() => setIsAdminLoginOpen(false)}
+            onLoginSuccess={() => {
+              setIsAdminLoggedIn(true);
+              setIsAdminView(true);
+            }}
+          />
+        </Suspense>
+      )}
     </div>
   );
 }

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo, useMemo } from 'react';
 import { AlertOctagon, CheckCircle2, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
 import { Incident } from '../types';
 
@@ -6,9 +6,9 @@ interface IncidentSectionProps {
   incidents: Incident[];
 }
 
-export const IncidentSection: React.FC<IncidentSectionProps> = ({ incidents }) => {
-  const activeIncidents = incidents.filter((i) => i.status !== 'resolved');
-  const pastIncidents = incidents.filter((i) => i.status === 'resolved');
+export const IncidentSection: React.FC<IncidentSectionProps> = memo(({ incidents }) => {
+  const activeIncidents = useMemo(() => incidents.filter((i) => i.status !== 'resolved'), [incidents]);
+  const pastIncidents = useMemo(() => incidents.filter((i) => i.status === 'resolved'), [incidents]);
 
   const getStatusBadge = (status: Incident['status']) => {
     switch (status) {
@@ -146,4 +146,4 @@ export const IncidentSection: React.FC<IncidentSectionProps> = ({ incidents }) =
       </div>
     </section>
   );
-};
+});

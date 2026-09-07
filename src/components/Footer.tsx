@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bot, Github, Heart, Shield, Cloud, Container, Server, Download } from 'lucide-react';
+import { Bot, Heart, Shield, Cloud, Container, Server, Download } from 'lucide-react';
 
 interface FooterProps {
   onOpenAdmin: () => void;
@@ -74,7 +74,7 @@ export const Footer: React.FC<FooterProps> = ({ onOpenAdmin, botUsername, onOpen
             className="text-slate-400 hover:text-slate-200 transition-colors p-1"
             title="GitHub 源码"
           >
-            <Github className="w-4 h-4" />
+            <span className="text-lg">⌨</span>
           </a>
         </div>
 
