@@ -1,139 +1,149 @@
-import { useEffect, useState } from 'react'
-import { fetchIncidents, createIncident } from '../api'
-import { Incident } from '../types'
+import React from 'react';
+import { AlertOctagon, CheckCircle2, Clock, AlertTriangle, ShieldAlert } from 'lucide-react';
+import { Incident } from '../types';
 
-const STATUS_MAP = {
-  active: { label: '进行中', class: 'bg-red-500/20 text-red-400' },
-  investigating: { label: '排查中', class: 'bg-yellow-500/20 text-yellow-400' },
-  identified: { label: '已定位', class: 'bg-blue-500/20 text-blue-400' },
-  monitoring: { label: '观察中', class: 'bg-purple-500/20 text-purple-400' },
-  resolved: { label: '已恢复', class: 'bg-green-500/20 text-green-400' },
-  scheduled: { label: '计划中', class: 'bg-gray-500/20 text-gray-400' }
+interface IncidentSectionProps {
+  incidents: Incident[];
 }
 
-export default function IncidentSection() {
-  const [incidents, setIncidents] = useState<Incident[]>([])
-  const [showAdd, setShowAdd] = useState(false)
-  const [newIncident, setNewIncident] = useState({
-    title: '',
-    description: '',
-    type: 'incident' as Incident['type'],
-    status: 'active' as Incident['status']
-  })
+export const IncidentSection: React.FC<IncidentSectionProps> = ({ incidents }) => {
+  const activeIncidents = incidents.filter((i) => i.status !== 'resolved');
+  const pastIncidents = incidents.filter((i) => i.status === 'resolved');
 
-  const load = async () => {
-    try {
-      const result = await fetchIncidents()
-      setIncidents(result)
-    } catch (e) {
-      console.error('Failed to load incidents', e)
+  const getStatusBadge = (status: Incident['status']) => {
+    switch (status) {
+      case 'investigating':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-rose-500/10 text-rose-400 border border-rose-500/30">
+            调查中 (Investigating)
+          </span>
+        );
+      case 'identified':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-amber-500/10 text-amber-400 border border-amber-500/30">
+            原因已确认 (Identified)
+          </span>
+        );
+      case 'monitoring':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+            观察恢复中 (Monitoring)
+          </span>
+        );
+      case 'resolved':
+        return (
+          <span className="px-2 py-0.5 rounded text-[11px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+            已恢复 (Resolved)
+          </span>
+        );
     }
-  }
+  };
 
-  useEffect(() => {
-    load()
-  }, [])
-
-  const handleAdd = async () => {
-    try {
-      await createIncident(newIncident)
-      setShowAdd(false)
-      setNewIncident({ title: '', description: '', type: 'incident', status: 'active' })
-      load()
-    } catch (e) {
-      console.error('Failed to add incident', e)
+  const getSeverityBadge = (sev: Incident['severity']) => {
+    switch (sev) {
+      case 'critical':
+        return <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-rose-950 text-rose-300 border border-rose-800">严重中断</span>;
+      case 'major':
+        return <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-amber-950 text-amber-300 border border-amber-800">主要影响</span>;
+      case 'minor':
+        return <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-blue-950 text-blue-300 border border-blue-800">轻度异常</span>;
+      case 'maintenance':
+        return <span className="text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-indigo-950 text-indigo-300 border border-indigo-800">计划维护</span>;
     }
-  }
+  };
 
   return (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">📢 事件公告</h2>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium"
-        >
-          + 发布事件
-        </button>
+    <section className="space-y-6">
+      <div>
+        <div className="flex items-center gap-2">
+          <AlertOctagon className="w-5 h-5 text-amber-400" />
+          <h2 className="text-lg font-bold text-white tracking-tight">系统事件与维护公告历史</h2>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            {incidents.length} 条记录
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 mt-0.5">
+          记录网络异常、上游光缆抖动、核心机房维护与故障处理完整进展时间线
+        </p>
       </div>
 
-      {showAdd && (
-        <div className="mb-6 p-4 bg-gray-700 rounded-lg">
+      {/* Active Incidents */}
+      {activeIncidents.length > 0 && (
+        <div className="space-y-3">
+          <h3 className="text-xs font-bold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping" />
+            <span>当前活跃处理中事件 ({activeIncidents.length})</span>
+          </h3>
+
           <div className="space-y-4">
-            <input
-              type="text"
-              placeholder="事件标题"
-              value={newIncident.title}
-              onChange={(e) => setNewIncident({ ...newIncident, title: e.target.value })}
-              className="w-full bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
-            />
-            <textarea
-              placeholder="事件描述"
-              value={newIncident.description}
-              onChange={(e) => setNewIncident({ ...newIncident, description: e.target.value })}
-              className="w-full bg-gray-600 text-white px-4 py-2 rounded border border-gray-500 h-24"
-            />
-            <div className="flex space-x-2">
-              <select
-                value={newIncident.type}
-                onChange={(e) => setNewIncident({ ...newIncident, type: e.target.value as Incident['type'] })}
-                className="bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
+            {activeIncidents.map((inc) => (
+              <div
+                key={inc.id}
+                className="p-5 rounded-xl bg-amber-950/20 border border-amber-500/40 space-y-3 shadow-md"
               >
-                <option value="incident">故障</option>
-                <option value="maintenance">维护</option>
-                <option value="update">更新</option>
-              </select>
-              <select
-                value={newIncident.status}
-                onChange={(e) => setNewIncident({ ...newIncident, status: e.target.value as Incident['status'] })}
-                className="bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
-              >
-                <option value="active">进行中</option>
-                <option value="investigating">排查中</option>
-                <option value="identified">已定位</option>
-                <option value="monitoring">观察中</option>
-                <option value="resolved">已恢复</option>
-              </select>
-            </div>
-            <div className="flex space-x-2">
-              <button onClick={handleAdd} className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
-                发布
-              </button>
-              <button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm">
-                取消
-              </button>
-            </div>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    {getSeverityBadge(inc.severity)}
+                    <h4 className="font-bold text-sm text-amber-100">{inc.title}</h4>
+                  </div>
+                  {getStatusBadge(inc.status)}
+                </div>
+
+                <div className="border-l-2 border-amber-500/30 pl-4 space-y-3 my-2">
+                  {inc.updates.map((upd) => (
+                    <div key={upd.id} className="text-xs space-y-1">
+                      <div className="flex items-center gap-2 text-slate-400 font-mono text-[11px]">
+                        <Clock className="w-3 h-3" />
+                        <span>{upd.timestamp}</span>
+                        <span className="text-amber-300 font-semibold">{upd.status.toUpperCase()}</span>
+                      </div>
+                      <p className="text-slate-200">{upd.message}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       )}
 
-      <div className="space-y-4">
-        {incidents.length === 0 ? (
-          <div className="text-center text-gray-500 py-8">暂无事件公告</div>
-        ) : (
-          incidents.map((inc) => {
-            const statusInfo = STATUS_MAP[inc.status]
-            return (
-              <div key={inc.id} className="bg-gray-700 p-4 rounded-lg">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-1 rounded text-xs ${statusInfo.class}`}>
-                        {statusInfo.label}
-                      </span>
-                      <span className="text-gray-500 text-sm">
-                        {new Date(inc.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <h3 className="font-bold mt-2">{inc.title}</h3>
-                    <p className="text-gray-400 text-sm mt-1">{inc.description}</p>
-                  </div>
+      {/* Past Resolved Incidents */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+          <span>历史已处理事件记录</span>
+        </h3>
+
+        <div className="space-y-4">
+          {pastIncidents.map((inc) => (
+            <div
+              key={inc.id}
+              className="p-5 rounded-xl bg-slate-900/50 border border-slate-800/80 space-y-3"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="flex items-center gap-2">
+                  {getSeverityBadge(inc.severity)}
+                  <h4 className="font-semibold text-sm text-slate-100">{inc.title}</h4>
                 </div>
+                {getStatusBadge(inc.status)}
               </div>
-            )
-          })
-        )}
+
+              {/* Updates timeline */}
+              <div className="border-l-2 border-slate-800 pl-4 space-y-3 pt-1">
+                {inc.updates.map((upd) => (
+                  <div key={upd.id} className="text-xs space-y-0.5">
+                    <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
+                      <span>{upd.timestamp}</span>
+                      <span className="text-slate-400 font-medium">{upd.status.toUpperCase()}</span>
+                    </div>
+                    <p className="text-slate-300">{upd.message}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  )
-}
+    </section>
+  );
+};

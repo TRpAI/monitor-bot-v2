@@ -1,21 +1,24 @@
-version: '3.8'
-
 services:
-  monitor-bot:
-    build: .
+  monitor-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: trpai/monitor-bot-web:latest
+    container_name: monitor-bot-web
+    restart: unless-stopped
     ports:
       - "3000:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
-      - ADMIN_SECRET=${ADMIN_SECRET}
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN:-}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID:-}
+      - ADMIN_SECRET=${ADMIN_SECRET:-admin123}
     volumes:
+      # Optional: persist custom configurations if needed
       - ./data:/app/data
-    restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/api/status"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/api/status"]
       interval: 30s
-      timeout: 3s
+      timeout: 5s
       retries: 3

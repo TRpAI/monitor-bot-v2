@@ -1,81 +1,435 @@
-import { Node, WebService, Incident } from './types'
+import { MonitorNode, WebService, Incident, TelegramBotConfig } from './types';
 
-// Cloudflare Pages 纯静态版本 - 使用模拟数据
-// 生产环境可替换为真实 API 调用
-
-export const mockNodes: Node[] = [
-  {
-    id: '1',
-    name: 'US-East-1',
-    ip: '192.168.1.100',
-    region: '北美',
-    cpu: 45.2,
-    memory: 62.8,
-    disk: 35.5,
-    netUp: 12.5,
-    netDown: 45.8,
-    temperature: 65,
-    status: 'online',
-    lastReport: new Date().toISOString(),
-    specs: { cpuModel: 'Intel Xeon E5', memoryTotal: '32GB', diskTotal: '1TB SSD', os: 'Ubuntu 22.04' }
-  },
-  {
-    id: '2',
-    name: 'EU-West-1',
-    ip: '10.0.0.50',
-    region: '欧洲',
-    cpu: 23.1,
-    memory: 45.6,
-    disk: 28.9,
-    netUp: 8.2,
-    netDown: 32.1,
-    temperature: 58,
-    status: 'online',
-    lastReport: new Date().toISOString(),
-    specs: { cpuModel: 'AMD EPYC', memoryTotal: '64GB', diskTotal: '2TB SSD', os: 'Debian 12' }
-  },
-  {
-    id: '3',
-    name: 'AP-Southeast-1',
-    ip: '172.16.0.25',
-    region: '东南亚',
-    cpu: 78.5,
-    memory: 85.2,
-    disk: 45.3,
-    netUp: 25.6,
-    netDown: 68.9,
-    temperature: 72,
-    status: 'warning',
-    lastReport: new Date().toISOString(),
-    specs: { cpuModel: 'Intel i7', memoryTotal: '32GB', diskTotal: '512GB NVMe', os: 'Ubuntu 24.04' }
+// Helper to generate 90-day history with 99.8%+ uptime
+function generate90DayHistory(seedDegradedCount = 1): { date: string; status: 'operational' | 'degraded' | 'outage'; uptimePercent: number }[] {
+  const days: { date: string; status: 'operational' | 'degraded' | 'outage'; uptimePercent: number }[] = [];
+  const now = new Date();
+  
+  for (let i = 89; i >= 0; i--) {
+    const d = new Date(now);
+    d.setDate(d.getDate() - i);
+    const dateStr = d.toISOString().split('T')[0];
+    
+    // Most days operational, occasional minor degradation in the past
+    let status: 'operational' | 'degraded' | 'outage' = 'operational';
+    let uptime = 100;
+    
+    if (seedDegradedCount > 0 && i === 14) {
+      status = 'degraded';
+      uptime = 98.4;
+    } else if (seedDegradedCount > 1 && i === 45) {
+      status = 'degraded';
+      uptime = 99.1;
+    } else {
+      uptime = 99.9 + (Math.random() * 0.1);
+    }
+    
+    days.push({
+      date: dateStr,
+      status,
+      uptimePercent: parseFloat(uptime.toFixed(2)),
+    });
   }
-]
-
-export const mockServices: WebService[] = [
-  { id: '1', name: '生产 API', url: 'https://api.example.com', type: 'https', status: 'up', latency: 45, uptime90d: 99.95, lastCheck: new Date().toISOString() },
-  { id: '2', name: '用户服务', url: 'https://users.example.com', type: 'https', status: 'up', latency: 32, uptime90d: 99.89, lastCheck: new Date().toISOString() },
-  { id: '3', name: '支付网关', url: 'https://pay.example.com', type: 'https', status: 'degraded', latency: 280, uptime90d: 98.5, lastCheck: new Date().toISOString() }
-]
-
-export const mockIncidents: Incident[] = [
-  { id: '1', type: 'incident', title: '支付网关延迟升高', description: '东南亚区域支付接口响应时间异常', status: 'investigating', created_at: new Date(Date.now() - 3600000).toISOString(), updated_at: new Date().toISOString() }
-]
-
-// API 客户端（适配 Cloudflare Pages）
-const API_BASE = import.meta.env.VITE_API_URL || ''
-
-export async function fetchStatus() {
-  return { onlineNodes: 3, avgLatency: 45, uptime90d: 99.8, totalServices: 12 }
+  return days;
 }
 
-export async function fetchNodes() {
-  return mockNodes
-}
+export const initialNodes: MonitorNode[] = [
+  {
+    id: 'node-hk-01',
+    name: 'HK-Edge-Master-01',
+    host: '185.199.108.153',
+    region: '中国香港 (Hong Kong CN2)',
+    countryCode: 'HK',
+    type: 'vps',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['TG-Bot主控', 'CN2 GIA', '生产'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 18.5, cores: 4, model: 'AMD EPYC 7763 64-Core' },
+      memory: { usedMb: 3240, totalMb: 8192, percent: 39.5 },
+      swap: { usedMb: 128, totalMb: 4096, percent: 3.1 },
+      disk: { usedGb: 32.4, totalGb: 120, percent: 27.0 },
+      network: { upSpeedKb: 480, downSpeedKb: 1250, totalUpGb: 142.8, totalDownGb: 388.5 },
+      load: [0.35, 0.42, 0.38],
+      ping: { latencyMs: 24, lossPercent: 0 },
+      uptimeSeconds: 3842100, // ~44 days
+      temperatureCelsius: 41.2,
+      os: 'Debian 12 (bookworm)',
+      kernel: 'Linux 6.1.0-21-amd64',
+      ip: '185.199.108.153',
+      history: [
+        { time: '10:00', cpu: 14, ram: 38, latency: 25 },
+        { time: '10:15', cpu: 22, ram: 39, latency: 24 },
+        { time: '10:30', cpu: 19, ram: 40, latency: 23 },
+        { time: '10:45', cpu: 31, ram: 41, latency: 26 },
+        { time: '11:00', cpu: 18, ram: 39, latency: 24 },
+      ]
+    }
+  },
+  {
+    id: 'node-jp-02',
+    name: 'JP-Tokyo-Cluster-02',
+    host: '45.76.104.88',
+    region: '日本东京 (Tokyo Equinix TY8)',
+    countryCode: 'JP',
+    type: 'dedicated',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['BGP多线', '数据库副本', '高配'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 28.2, cores: 8, model: 'Intel Xeon Gold 6248R @ 3.00GHz' },
+      memory: { usedMb: 8940, totalMb: 16384, percent: 54.5 },
+      swap: { usedMb: 0, totalMb: 8192, percent: 0 },
+      disk: { usedGb: 142.6, totalGb: 480, percent: 29.7 },
+      network: { upSpeedKb: 1840, downSpeedKb: 3420, totalUpGb: 580.4, totalDownGb: 1240.2 },
+      load: [0.65, 0.58, 0.62],
+      ping: { latencyMs: 46, lossPercent: 0 },
+      uptimeSeconds: 7891200, // ~91 days
+      temperatureCelsius: 45.0,
+      os: 'Ubuntu 24.04 LTS',
+      kernel: 'Linux 6.8.0-31-generic',
+      ip: '45.76.104.88',
+      history: [
+        { time: '10:00', cpu: 25, ram: 53, latency: 45 },
+        { time: '10:15', cpu: 28, ram: 54, latency: 46 },
+        { time: '10:30', cpu: 32, ram: 55, latency: 47 },
+        { time: '10:45', cpu: 27, ram: 54, latency: 46 },
+        { time: '11:00', cpu: 28, ram: 54, latency: 46 },
+      ]
+    }
+  },
+  {
+    id: 'node-us-03',
+    name: 'US-West-SanJose-03',
+    host: '104.244.72.19',
+    region: '美国硅谷 (San Jose Silicon Valley)',
+    countryCode: 'US',
+    type: 'docker',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['DockerSwarm', 'Cloudflare回源', 'API网关'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 12.8, cores: 4, model: 'AMD Ryzen 9 5950X' },
+      memory: { usedMb: 2410, totalMb: 8192, percent: 29.4 },
+      disk: { usedGb: 28.5, totalGb: 100, percent: 28.5 },
+      network: { upSpeedKb: 890, downSpeedKb: 1450, totalUpGb: 310.2, totalDownGb: 670.8 },
+      load: [0.18, 0.22, 0.25],
+      ping: { latencyMs: 128, lossPercent: 0 },
+      uptimeSeconds: 4512000,
+      temperatureCelsius: 38.8,
+      os: 'Alpine Linux v3.20 (Container Host)',
+      kernel: 'Linux 6.6.32-lts',
+      ip: '104.244.72.19',
+      history: [
+        { time: '10:00', cpu: 11, ram: 28, latency: 127 },
+        { time: '10:15', cpu: 14, ram: 29, latency: 129 },
+        { time: '10:30', cpu: 13, ram: 29, latency: 128 },
+        { time: '10:45', cpu: 16, ram: 30, latency: 130 },
+        { time: '11:00', cpu: 12, ram: 29, latency: 128 },
+      ]
+    }
+  },
+  {
+    id: 'node-sg-04',
+    name: 'SG-Singapore-Edge-04',
+    host: '139.180.201.44',
+    region: '新加坡 (Singapore Jurong)',
+    countryCode: 'SG',
+    type: 'vps',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['东南亚加速', 'TG轮询通道', '静态缓存'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 8.4, cores: 2, model: 'Intel Xeon E5-2680 v4' },
+      memory: { usedMb: 1420, totalMb: 4096, percent: 34.6 },
+      disk: { usedGb: 18.2, totalGb: 80, percent: 22.7 },
+      network: { upSpeedKb: 320, downSpeedKb: 540, totalUpGb: 88.3, totalDownGb: 210.4 },
+      load: [0.08, 0.12, 0.14],
+      ping: { latencyMs: 62, lossPercent: 0 },
+      uptimeSeconds: 2198000,
+      temperatureCelsius: 43.5,
+      os: 'Debian 12 (bookworm)',
+      kernel: 'Linux 6.1.0-18-amd64',
+      ip: '139.180.201.44',
+      history: [
+        { time: '10:00', cpu: 7, ram: 34, latency: 61 },
+        { time: '10:15', cpu: 9, ram: 35, latency: 62 },
+        { time: '10:30', cpu: 8, ram: 34, latency: 63 },
+        { time: '10:45', cpu: 10, ram: 35, latency: 62 },
+        { time: '11:00', cpu: 8, ram: 34, latency: 62 },
+      ]
+    }
+  },
+  {
+    id: 'node-de-05',
+    name: 'DE-Frankfurt-Core-05',
+    host: '168.119.89.212',
+    region: '德国法兰克福 (Frankfurt Hetzner)',
+    countryCode: 'DE',
+    type: 'dedicated',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['欧洲中心', '异地备份', 'Hetzner'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 15.2, cores: 6, model: 'AMD Ryzen 5 3600 6-Core' },
+      memory: { usedMb: 4980, totalMb: 32768, percent: 15.2 },
+      disk: { usedGb: 68.4, totalGb: 512, percent: 13.3 },
+      network: { upSpeedKb: 650, downSpeedKb: 1120, totalUpGb: 412.0, totalDownGb: 890.5 },
+      load: [0.24, 0.28, 0.31],
+      ping: { latencyMs: 165, lossPercent: 0 },
+      uptimeSeconds: 5930000,
+      temperatureCelsius: 39.0,
+      os: 'Ubuntu 22.04.4 LTS',
+      kernel: 'Linux 5.15.0-105-generic',
+      ip: '168.119.89.212',
+      history: [
+        { time: '10:00', cpu: 14, ram: 15, latency: 164 },
+        { time: '10:15', cpu: 16, ram: 15, latency: 166 },
+        { time: '10:30', cpu: 15, ram: 15, latency: 165 },
+        { time: '10:45', cpu: 18, ram: 16, latency: 167 },
+        { time: '11:00', cpu: 15, ram: 15, latency: 165 },
+      ]
+    }
+  },
+  {
+    id: 'node-rpi-06',
+    name: 'HomeLab-RaspberryPi-5',
+    host: '192.168.1.120 (NAT)',
+    region: '私人实验室 (Raspberry Pi 5 ARM64)',
+    countryCode: 'CN',
+    type: 'rpi',
+    status: 'online',
+    lastSeen: '刚刚',
+    tags: ['ARM64', 'TRpAI探针', '温湿度监控', '局域网穿透'],
+    tgBotReported: true,
+    metrics: {
+      cpu: { usagePercent: 24.6, cores: 4, model: 'Broadcom BCM2712 Cortex-A76 @ 2.4GHz' },
+      memory: { usedMb: 1980, totalMb: 4096, percent: 48.3 },
+      disk: { usedGb: 14.8, totalGb: 64, percent: 23.1 },
+      network: { upSpeedKb: 85, downSpeedKb: 210, totalUpGb: 24.5, totalDownGb: 65.2 },
+      load: [0.42, 0.38, 0.35],
+      ping: { latencyMs: 18, lossPercent: 0 },
+      uptimeSeconds: 1640000,
+      temperatureCelsius: 48.6,
+      os: 'Raspbian GNU/Linux 12 (bookworm)',
+      kernel: 'Linux 6.6.20+rpt-rpi-2712',
+      ip: '192.168.1.120',
+      history: [
+        { time: '10:00', cpu: 22, ram: 48, latency: 17 },
+        { time: '10:15', cpu: 26, ram: 49, latency: 18 },
+        { time: '10:30', cpu: 25, ram: 48, latency: 18 },
+        { time: '10:45', cpu: 29, ram: 50, latency: 19 },
+        { time: '11:00', cpu: 24, ram: 48, latency: 18 },
+      ]
+    }
+  }
+];
 
-export async function fetchServices() {
-  return mockServices
-}
+export const initialServices: WebService[] = [
+  {
+    id: 'svc-tg-bot',
+    name: 'Telegram Monitor-Bot Core Daemon',
+    url: 'https://api.telegram.org/bot<TOKEN>/getMe',
+    group: 'Telegram服务',
+    method: 'GET',
+    intervalSec: 30,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 38,
+    sslValid: true,
+    sslExpiryDays: 240,
+    uptime90d: 99.98,
+    history90d: generate90DayHistory(0),
+    lastChecked: '刚刚',
+    description: 'TRpAI/monitor-bot 守护进程及 Telegram 官方 API 通信健康状态'
+  },
+  {
+    id: 'svc-tg-webhook',
+    name: 'TG Webhook Gateway & Ingestion',
+    url: 'https://monitor-bot.internal/api/tg/webhook',
+    group: 'Telegram服务',
+    method: 'POST',
+    intervalSec: 30,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 24,
+    sslValid: true,
+    sslExpiryDays: 165,
+    uptime90d: 99.95,
+    history90d: generate90DayHistory(1),
+    lastChecked: '刚刚',
+    description: '接收由 Telegram 机器人或服务器端推送的探针数据上报网关'
+  },
+  {
+    id: 'svc-api-gateway',
+    name: 'Public API Gateway (Cloudflare Edge)',
+    url: 'https://api.example.com/v1/health',
+    group: '核心API',
+    method: 'GET',
+    intervalSec: 30,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 16,
+    sslValid: true,
+    sslExpiryDays: 85,
+    uptime90d: 100.0,
+    history90d: generate90DayHistory(0),
+    lastChecked: '刚刚',
+    description: '全网 API 请求统一入口，通过 Cloudflare 边缘节点多地分发'
+  },
+  {
+    id: 'svc-auth',
+    name: 'Authentication & Session Service',
+    url: 'https://auth.example.com/healthz',
+    group: '鉴权与安全',
+    method: 'GET',
+    intervalSec: 60,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 42,
+    sslValid: true,
+    sslExpiryDays: 120,
+    uptime90d: 99.96,
+    history90d: generate90DayHistory(1),
+    lastChecked: '刚刚',
+    description: '用户身份验证、JWT 签名与权限验证服务'
+  },
+  {
+    id: 'svc-web-portal',
+    name: 'Web Status Showcase & CDN',
+    url: 'https://status.example.com',
+    group: '公共前端',
+    method: 'GET',
+    intervalSec: 60,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 28,
+    sslValid: true,
+    sslExpiryDays: 88,
+    uptime90d: 100.0,
+    history90d: generate90DayHistory(0),
+    lastChecked: '刚刚',
+    description: '面向大众公开的系统可用性看板及静态资源 CDN'
+  },
+  {
+    id: 'svc-db-cluster',
+    name: 'Primary PostgreSQL Database Cluster',
+    url: 'tcp://db.internal:5432',
+    group: '数据库与缓存',
+    method: 'TCP',
+    intervalSec: 30,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 5,
+    sslValid: true,
+    sslExpiryDays: 365,
+    uptime90d: 99.99,
+    history90d: generate90DayHistory(0),
+    lastChecked: '刚刚',
+    description: '主数据存储集群，包括连接池与多节点物理流复制'
+  },
+  {
+    id: 'svc-redis-cache',
+    name: 'Redis Cache & Pub/Sub Hub',
+    url: 'tcp://redis.internal:6379',
+    group: '数据库与缓存',
+    method: 'TCP',
+    intervalSec: 15,
+    status: 'operational',
+    statusCode: 200,
+    latencyMs: 3,
+    sslValid: true,
+    sslExpiryDays: 365,
+    uptime90d: 100.0,
+    history90d: generate90DayHistory(0),
+    lastChecked: '刚刚',
+    description: '实时消息队列与状态缓存，支撑 Telegram 机器人低延迟推送'
+  }
+];
 
-export async function fetchIncidents() {
-  return mockIncidents
-}
+export const initialIncidents: Incident[] = [
+  {
+    id: 'inc-2026-002',
+    title: '常规计划维护：核心数据库集群热补丁升级',
+    severity: 'maintenance',
+    status: 'resolved',
+    affectedServices: ['svc-db-cluster'],
+    createdAt: '2026-09-02 02:00:00',
+    updatedAt: '2026-09-02 02:45:00',
+    updates: [
+      {
+        id: 'u-1',
+        timestamp: '2026-09-02 02:45:00',
+        status: 'resolved',
+        message: '升级顺利完成，各从库同步延时归零，所有业务流量恢复常态。'
+      },
+      {
+        id: 'u-2',
+        timestamp: '2026-09-02 02:25:00',
+        status: 'monitoring',
+        message: '主备切换完毕，核心写入恢复正常，正在观察只读从库负载。'
+      },
+      {
+        id: 'u-3',
+        timestamp: '2026-09-02 02:00:00',
+        status: 'investigating',
+        message: '维护开始，系统已临时启用跨可用区备机热容灾。'
+      }
+    ]
+  },
+  {
+    id: 'inc-2026-001',
+    title: '上游海底光缆抖动致使欧洲部分节点网络延迟升高',
+    severity: 'minor',
+    status: 'resolved',
+    affectedServices: ['node-de-05', 'svc-api-gateway'],
+    createdAt: '2026-08-20 14:15:00',
+    updatedAt: '2026-08-20 15:30:00',
+    updates: [
+      {
+        id: 'u-4',
+        timestamp: '2026-08-20 15:30:00',
+        status: 'resolved',
+        message: '运营商完成 BGP Anycast 备用路径导流，延迟已回落至正常基准（<170ms）。'
+      },
+      {
+        id: 'u-5',
+        timestamp: '2026-08-20 14:35:00',
+        status: 'monitoring',
+        message: '自动调整 Cloudflare 边缘路由，将部分流量调度至法兰克福副线。'
+      },
+      {
+        id: 'u-6',
+        timestamp: '2026-08-20 14:15:00',
+        status: 'identified',
+        message: '检测到亚欧海底光缆出现抖动，部分欧洲节点丢包率短时升至 4%。'
+      }
+    ]
+  }
+];
+
+export const initialTelegramConfig: TelegramBotConfig = {
+  botToken: '',
+  chatId: '',
+  botUsername: '@TRpAI_MonitorBot',
+  connected: true,
+  autoSync: true,
+  syncIntervalSec: 30,
+  lastSyncTime: '2026-09-07 04:20:15',
+  alertOnNodeOffline: true,
+  alertOnHighLoad: true,
+  thresholds: {
+    cpuPercent: 85,
+    memoryPercent: 90,
+    diskPercent: 90,
+    tempCelsius: 75,
+    latencyMs: 300,
+  },
+  webhookUrl: 'https://YOUR_DOMAIN/api/telegram/webhook',
+  lastError: null,
+};

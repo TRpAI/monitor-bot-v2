@@ -1,119 +1,193 @@
-import { useEffect, useState } from 'react'
-import { fetchServices, createService, checkService } from '../api'
-import { WebService } from '../types'
+import React, { useState } from 'react';
+import { Globe, CheckCircle2, AlertTriangle, XCircle, ShieldCheck, RefreshCw, ExternalLink, Zap } from 'lucide-react';
+import { WebService } from '../types';
 
-export default function ServiceList() {
-  const [services, setServices] = useState<WebService[]>([])
-  const [showAdd, setShowAdd] = useState(false)
-  const [newService, setNewService] = useState({ name: '', url: '', type: 'https' as 'http' | 'https' | 'tcp' })
+interface ServiceListProps {
+  services: WebService[];
+  onCheckService: (serviceId: string) => Promise<void>;
+}
 
-  const load = async () => {
-    try {
-      const result = await fetchServices()
-      setServices(result)
-    } catch (e) {
-      console.error('Failed to load services', e)
-    }
-  }
-
-  useEffect(() => {
-    load()
-    const interval = setInterval(load, 60000)
-    return () => clearInterval(interval)
-  }, [])
-
-  const handleAdd = async () => {
-    try {
-      await createService(newService)
-      setShowAdd(false)
-      setNewService({ name: '', url: '', type: 'https' })
-      load()
-    } catch (e) {
-      console.error('Failed to add service', e)
-    }
-  }
+export const ServiceList: React.FC<ServiceListProps> = ({ services, onCheckService }) => {
+  const [checkingId, setCheckingId] = useState<string | null>(null);
+  const [hoveredDay, setHoveredDay] = useState<{ date: string; uptime: number; serviceId: string } | null>(null);
 
   const handleCheck = async (id: string) => {
-    await checkService(id)
-    load()
+    setCheckingId(id);
+    await onCheckService(id);
+    setCheckingId(null);
+  };
+
+  // Group services
+  const grouped: Record<string, WebService[]> = {};
+  for (const svc of services) {
+    const grp = svc.group || '其他服务';
+    if (!grouped[grp]) grouped[grp] = [];
+    grouped[grp].push(svc);
   }
 
+  const getStatusIcon = (status: WebService['status']) => {
+    switch (status) {
+      case 'operational':
+        return <CheckCircle2 className="w-4 h-4 text-emerald-400" />;
+      case 'degraded':
+        return <AlertTriangle className="w-4 h-4 text-amber-400" />;
+      case 'outage':
+        return <XCircle className="w-4 h-4 text-rose-400" />;
+      default:
+        return <CheckCircle2 className="w-4 h-4 text-slate-400" />;
+    }
+  };
+
+  const getStatusText = (status: WebService['status']) => {
+    switch (status) {
+      case 'operational':
+        return '正常运行';
+      case 'degraded':
+        return '性能降级';
+      case 'outage':
+        return '服务中断';
+      case 'maintenance':
+        return '维护中';
+    }
+  };
+
   return (
-    <div className="bg-gray-800 rounded-xl p-6 border border-gray-700">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl font-bold">🌐 服务监控</h2>
-        <button
-          onClick={() => setShowAdd(true)}
-          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg text-sm font-medium"
-        >
-          + 添加服务
-        </button>
+    <section className="space-y-6">
+      <div>
+        <div className="flex items-center gap-2">
+          <Globe className="w-5 h-5 text-emerald-400" />
+          <h2 className="text-lg font-bold text-white tracking-tight">网络端点与服务可用性监测</h2>
+          <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            {services.length} 个监测端点
+          </span>
+        </div>
+        <p className="text-xs text-slate-400 mt-0.5">
+          每项服务均由探针集群发起多地区 HTTP/TCP 状态探测，统计过去 90 天可用率曲线
+        </p>
       </div>
 
-      {showAdd && (
-        <div className="mb-6 p-4 bg-gray-700 rounded-lg">
-          <div className="grid grid-cols-3 gap-4 mb-4">
-            <input
-              type="text"
-              placeholder="服务名称"
-              value={newService.name}
-              onChange={(e) => setNewService({ ...newService, name: e.target.value })}
-              className="bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
-            />
-            <input
-              type="text"
-              placeholder="URL (https://...)"
-              value={newService.url}
-              onChange={(e) => setNewService({ ...newService, url: e.target.value })}
-              className="bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
-            />
-            <select
-              value={newService.type}
-              onChange={(e) => setNewService({ ...newService, type: e.target.value as any })}
-              className="bg-gray-600 text-white px-4 py-2 rounded border border-gray-500"
-            >
-              <option value="https">HTTPS</option>
-              <option value="http">HTTP</option>
-              <option value="tcp">TCP</option>
-            </select>
-          </div>
-          <div className="flex space-x-2">
-            <button onClick={handleAdd} className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded text-sm">
-              确认添加
-            </button>
-            <button onClick={() => setShowAdd(false)} className="px-4 py-2 bg-gray-600 hover:bg-gray-500 rounded text-sm">
-              取消
-            </button>
-          </div>
-        </div>
-      )}
+      {/* Grouped Service Cards */}
+      <div className="space-y-6">
+        {Object.entries(grouped).map(([groupName, svcs]) => (
+          <div key={groupName} className="space-y-3">
+            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-1 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+              <span>{groupName}</span>
+              <span className="text-[10px] text-slate-500 font-mono">({svcs.length})</span>
+            </h3>
 
-      <div className="space-y-3">
-        {services.map((svc) => (
-          <div key={svc.id} className="bg-gray-700 p-4 rounded-lg flex justify-between items-center">
-            <div>
-              <div className="flex items-center space-x-2">
-                <span className={`w-2 h-2 rounded-full ${
-                  svc.status === 'up' ? 'bg-green-500' :
-                  svc.status === 'degraded' ? 'bg-yellow-500' : 'bg-red-500'
-                }`}></span>
-                <h3 className="font-medium">{svc.name}</h3>
-              </div>
-              <p className="text-sm text-gray-400 mt-1">{svc.url}</p>
-              <div className="flex space-x-4 mt-2 text-xs text-gray-500">
-                <span>延迟: {svc.latency}ms</span>
-                <span>可用率: {svc.uptime90d}%</span>
-              </div>
+            <div className="space-y-3">
+              {svcs.map((svc) => {
+                const history = svc.history90d && svc.history90d.length > 0
+                  ? svc.history90d
+                  : Array.from({ length: 90 }, (_, i) => ({
+                      date: `Day-${i}`,
+                      status: 'operational' as const,
+                      uptimePercent: 100,
+                    }));
+
+                return (
+                  <div
+                    key={svc.id}
+                    className="p-5 rounded-xl bg-slate-900/60 border border-slate-800/90 hover:border-slate-700 transition-colors shadow-xs"
+                  >
+                    {/* Top Row: Service Name, Status, Latency & Check Action */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                      <div>
+                        <div className="flex items-center gap-2.5">
+                          <h4 className="font-semibold text-sm text-slate-100">{svc.name}</h4>
+                          <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700/60">
+                            {svc.method}
+                          </span>
+                          {svc.sslValid && (
+                            <span
+                              title={`SSL证书有效期剩余 ${svc.sslExpiryDays} 天`}
+                              className="inline-flex items-center gap-1 text-[10px] font-mono text-emerald-400 bg-emerald-950/40 border border-emerald-800/40 px-1.5 py-0.5 rounded"
+                            >
+                              <ShieldCheck className="w-3 h-3" />
+                              <span>SSL {svc.sslExpiryDays}d</span>
+                            </span>
+                          )}
+                        </div>
+                        {svc.description && (
+                          <p className="text-xs text-slate-400 mt-1">{svc.description}</p>
+                        )}
+                      </div>
+
+                      {/* Right Meta Badges */}
+                      <div className="flex items-center gap-3 self-start sm:self-auto">
+                        <div className="flex items-center gap-1 text-xs font-mono text-slate-300">
+                          <Zap className="w-3.5 h-3.5 text-amber-400" />
+                          <span>{svc.latencyMs} ms</span>
+                        </div>
+
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-slate-950 border border-slate-800 text-xs font-medium">
+                          {getStatusIcon(svc.status)}
+                          <span className="text-slate-200">{getStatusText(svc.status)}</span>
+                        </div>
+
+                        <button
+                          onClick={() => handleCheck(svc.id)}
+                          disabled={checkingId === svc.id}
+                          title="发起即时健康状态检测"
+                          className="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-cyan-400 border border-slate-700 transition-colors disabled:opacity-50"
+                        >
+                          <RefreshCw className={`w-3.5 h-3.5 ${checkingId === svc.id ? 'animate-spin text-cyan-400' : ''}`} />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* 90-Day Interactive Timeline Bar */}
+                    <div>
+                      <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-mono">
+                        <span>90 天前</span>
+                        <span className="text-slate-300 font-semibold">
+                          过去 90 天可用率: <strong className="text-emerald-400 font-bold">{svc.uptime90d}%</strong>
+                        </span>
+                        <span>今天</span>
+                      </div>
+
+                      {/* Bar strips */}
+                      <div className="flex items-center gap-0.5 sm:gap-1 h-8 px-1 py-1 rounded-lg bg-slate-950/80 border border-slate-800/80">
+                        {history.map((day, idx) => {
+                          const isDegraded = day.status === 'degraded';
+                          const isOutage = day.status === 'outage';
+                          const barColor = isOutage
+                            ? 'bg-rose-500'
+                            : isDegraded
+                            ? 'bg-amber-400'
+                            : 'bg-emerald-500 hover:bg-emerald-400';
+
+                          return (
+                            <div
+                              key={idx}
+                              onMouseEnter={() => setHoveredDay({ date: day.date, uptime: day.uptimePercent, serviceId: svc.id })}
+                              onMouseLeave={() => setHoveredDay(null)}
+                              className={`flex-1 h-full rounded-xs transition-all duration-150 cursor-pointer ${barColor}`}
+                            />
+                          );
+                        })}
+                      </div>
+
+                      {/* Tooltip on Hover */}
+                      <div className="h-5 mt-1 flex items-center justify-center text-[11px] font-mono text-slate-400">
+                        {hoveredDay && hoveredDay.serviceId === svc.id ? (
+                          <span className="text-cyan-300 bg-slate-950 px-2 py-0.5 rounded border border-slate-800">
+                            {hoveredDay.date} · 可用率 {hoveredDay.uptime}%
+                          </span>
+                        ) : (
+                          <span className="text-slate-500 text-[10px]">悬停在色块上可查看单日可用性详情</span>
+                        )}
+                      </div>
+                    </div>
+
+                  </div>
+                );
+              })}
             </div>
-            <button
-              onClick={() => handleCheck(svc.id)}
-              className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
-            >
-              立即检测
-            </button>
           </div>
         ))}
       </div>
-    </div>
-  )
-}
+    </section>
+  );
+};

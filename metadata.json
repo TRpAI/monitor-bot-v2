@@ -1,0 +1,6 @@
+{
+  "name": "MonitorBot 监控展示与后台管理系统",
+  "description": "基于 TRpAI/monitor-bot 的实时节点与服务监控展示页与后台管理系统，集成 Telegram Bot 数据同步与告警，支持 Cloudflare、Docker 及原生部署。",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

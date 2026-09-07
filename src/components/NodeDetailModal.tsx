@@ -1,96 +1,245 @@
-import { Node } from '../types'
+import React, { useState } from 'react';
+import { X, Server, Cpu, HardDrive, Wifi, Activity, Terminal, Check, Copy, Thermometer, Clock, ShieldCheck, ArrowUp, ArrowDown } from 'lucide-react';
+import { MonitorNode } from '../types';
 
 interface NodeDetailModalProps {
-  node: Node
-  onClose: () => void
+  node: MonitorNode | null;
+  onClose: () => void;
 }
 
-export default function NodeDetailModal({ node, onClose }: NodeDetailModalProps) {
+export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({ node, onClose }) => {
+  const [copied, setCopied] = useState(false);
+
+  if (!node) return null;
+
+  const uptimeDays = Math.floor(node.metrics.uptimeSeconds / 86400);
+  const uptimeHours = Math.floor((node.metrics.uptimeSeconds % 86400) / 3600);
+
+  const agentCommand = `curl -fsSL https://${window.location.host}/api/agent/script | bash -s -- --node-id ${node.id}`;
+
+  const handleCopyCommand = () => {
+    navigator.clipboard.writeText(agentCommand);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-800 rounded-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="p-6">
-          <div className="flex justify-between items-start mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-3xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col">
+        
+        {/* Modal Header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-800 bg-slate-950/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-950/60 border border-cyan-800/40 text-cyan-400 flex items-center justify-center">
+              <Server className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="text-2xl font-bold">{node.name}</h2>
-              <p className="text-gray-400">{node.ip} · {node.region}</p>
-            </div>
-            <button onClick={onClose} className="text-gray-400 hover:text-white text-2xl">×</button>
-          </div>
-
-          <div className="grid grid-cols-2 gap-6 mb-6">
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-gray-400 text-sm mb-2">系统规格</h3>
-              <p className="text-sm"><span className="text-gray-500">CPU:</span> {node.specs.cpuModel}</p>
-              <p className="text-sm"><span className="text-gray-500">内存:</span> {node.specs.memoryTotal}</p>
-              <p className="text-sm"><span className="text-gray-500">磁盘:</span> {node.specs.diskTotal}</p>
-              <p className="text-sm"><span className="text-gray-500">系统:</span> {node.specs.os}</p>
-            </div>
-            <div className="bg-gray-700 p-4 rounded-lg">
-              <h3 className="text-gray-400 text-sm mb-2">网络流量</h3>
-              <p className="text-sm"><span className="text-gray-500">上传:</span> {node.netUp} Mbps</p>
-              <p className="text-sm"><span className="text-gray-500">下载:</span> {node.netDown} Mbps</p>
-              <p className="text-sm"><span className="text-gray-500">最后报告:</span> {new Date(node.lastReport).toLocaleString()}</p>
+              <div className="flex items-center gap-2">
+                <h3 className="text-base font-bold text-white">{node.name}</h3>
+                <span className="text-xs font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                  {node.status.toUpperCase()}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 font-mono">
+                {node.region} · IP: {node.host}
+              </p>
             </div>
           </div>
 
-          <div className="space-y-4">
-            <h3 className="font-bold">实时指标</h3>
-            
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>CPU 使用率</span>
-                <span className={node.cpu > 80 ? 'text-red-400' : 'text-gray-300'}>{node.cpu}%</span>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full ${node.cpu > 80 ? 'bg-red-500' : node.cpu > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                  style={{ width: `${node.cpu}%` }}
-                ></div>
+          <button
+            onClick={onClose}
+            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Modal Scrollable Body */}
+        <div className="p-6 overflow-y-auto space-y-6 text-xs text-slate-300">
+          
+          {/* Quick Specs Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-[11px] text-slate-400">运行时间</span>
+              <div className="text-sm font-bold font-mono text-slate-100 mt-1 flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-cyan-400" />
+                <span>{uptimeDays}天 {uptimeHours}小时</span>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>内存使用率</span>
-                <span className={node.memory > 80 ? 'text-red-400' : 'text-gray-300'}>{node.memory}%</span>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full ${node.memory > 80 ? 'bg-red-500' : node.memory > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                  style={{ width: `${node.memory}%` }}
-                ></div>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-[11px] text-slate-400">系统平均负载 (1/5/15m)</span>
+              <div className="text-sm font-bold font-mono text-slate-100 mt-1">
+                {node.metrics.load.join(' , ')}
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>磁盘使用率</span>
-                <span className={node.disk > 80 ? 'text-red-400' : 'text-gray-300'}>{node.disk}%</span>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full ${node.disk > 80 ? 'bg-red-500' : node.disk > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                  style={{ width: `${node.disk}%` }}
-                ></div>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-[11px] text-slate-400">网络 Ping 延迟</span>
+              <div className="text-sm font-bold font-mono text-emerald-400 mt-1 flex items-center gap-1">
+                <Wifi className="w-3.5 h-3.5" />
+                <span>{node.metrics.ping.latencyMs} ms (0% 丢包)</span>
               </div>
             </div>
 
-            <div>
-              <div className="flex justify-between text-sm mb-1">
-                <span>温度</span>
-                <span className={node.temperature > 75 ? 'text-red-400' : 'text-gray-300'}>{node.temperature}°C</span>
-              </div>
-              <div className="w-full bg-gray-600 rounded-full h-3">
-                <div
-                  className={`h-3 rounded-full ${node.temperature > 75 ? 'bg-red-500' : node.temperature > 60 ? 'bg-yellow-500' : 'bg-green-500'}`}
-                  style={{ width: `${Math.min(node.temperature, 100)}%` }}
-                ></div>
+            <div className="p-3 rounded-xl bg-slate-950/60 border border-slate-800">
+              <span className="text-[11px] text-slate-400">核心工作温度</span>
+              <div className="text-sm font-bold font-mono text-amber-400 mt-1 flex items-center gap-1">
+                <Thermometer className="w-3.5 h-3.5" />
+                <span>{node.metrics.temperatureCelsius || 42.5} °C</span>
               </div>
             </div>
           </div>
+
+          {/* System & Hardware Details */}
+          <div className="p-4 rounded-xl bg-slate-950/40 border border-slate-800/80 space-y-2 font-mono text-xs">
+            <div className="flex justify-between pb-2 border-b border-slate-800/60">
+              <span className="text-slate-400">操作系统</span>
+              <span className="text-slate-200">{node.metrics.os}</span>
+            </div>
+            <div className="flex justify-between pb-2 border-b border-slate-800/60">
+              <span className="text-slate-400">Linux 内核版本</span>
+              <span className="text-slate-200">{node.metrics.kernel || 'Linux 6.x'}</span>
+            </div>
+            <div className="flex justify-between pb-2 border-b border-slate-800/60">
+              <span className="text-slate-400">处理器型号</span>
+              <span className="text-slate-200">{node.metrics.cpu.model} ({node.metrics.cpu.cores} 逻辑核心)</span>
+            </div>
+            <div className="flex justify-between pb-2 border-b border-slate-800/60">
+              <span className="text-slate-400">网络累计传输</span>
+              <span className="text-slate-200">
+                出站 {node.metrics.network.totalUpGb} GB / 入站 {node.metrics.network.totalDownGb} GB
+              </span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-400">数据源通道</span>
+              <span className="text-cyan-400 font-sans">
+                {node.tgBotReported ? 'TRpAI/monitor-bot 机器人探针心跳链路' : '本地监控网关'}
+              </span>
+            </div>
+          </div>
+
+          {/* Metric Sparkline Cards */}
+          <div>
+            <h4 className="text-xs font-semibold text-slate-300 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Activity className="w-4 h-4 text-cyan-400" />
+              <span>近期心跳与负载走势</span>
+            </h4>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* CPU Chart */}
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                  <span>CPU 使用率</span>
+                  <span className="font-mono text-cyan-400">{node.metrics.cpu.usagePercent}%</span>
+                </div>
+                {/* Visual mini bar graph */}
+                <div className="h-16 flex items-end gap-1.5 pt-2">
+                  {(node.metrics.history || [
+                    { time: '1', cpu: 15 },
+                    { time: '2', cpu: 22 },
+                    { time: '3', cpu: 18 },
+                    { time: '4', cpu: 28 },
+                    { time: '5', cpu: node.metrics.cpu.usagePercent }
+                  ]).map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-cyan-500/80 rounded-xs transition-all duration-300"
+                        style={{ height: `${Math.max(10, h.cpu)}%` }}
+                        title={`${h.time}: ${h.cpu}%`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Memory Chart */}
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                  <span>内存占用率</span>
+                  <span className="font-mono text-indigo-400">{node.metrics.memory.percent}%</span>
+                </div>
+                <div className="h-16 flex items-end gap-1.5 pt-2">
+                  {(node.metrics.history || [
+                    { time: '1', ram: 45 },
+                    { time: '2', ram: 48 },
+                    { time: '3', ram: 47 },
+                    { time: '4', ram: 50 },
+                    { time: '5', ram: node.metrics.memory.percent }
+                  ]).map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-indigo-500/80 rounded-xs transition-all duration-300"
+                        style={{ height: `${Math.max(10, h.ram)}%` }}
+                        title={`${h.time}: ${h.ram}%`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Ping Latency Chart */}
+              <div className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800">
+                <div className="flex justify-between text-xs text-slate-400 mb-2">
+                  <span>Ping 延迟波动</span>
+                  <span className="font-mono text-emerald-400">{node.metrics.ping.latencyMs} ms</span>
+                </div>
+                <div className="h-16 flex items-end gap-1.5 pt-2">
+                  {(node.metrics.history || [
+                    { time: '1', latency: 24 },
+                    { time: '2', latency: 25 },
+                    { time: '3', latency: 23 },
+                    { time: '4', latency: 26 },
+                    { time: '5', latency: node.metrics.ping.latencyMs }
+                  ]).map((h, i) => (
+                    <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full justify-end">
+                      <div
+                        className="w-full bg-emerald-500/80 rounded-xs transition-all duration-300"
+                        style={{ height: `${Math.min(100, Math.max(15, h.latency))}%` }}
+                        title={`${h.time}: ${h.latency}ms`}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Agent Report Script */}
+          <div className="p-4 rounded-xl bg-slate-950 border border-slate-800 space-y-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-slate-300 font-medium">
+                <Terminal className="w-4 h-4 text-cyan-400" />
+                <span>在此 Linux 节点上执行 TRpAI 探针心跳上报</span>
+              </div>
+              <button
+                onClick={handleCopyCommand}
+                className="flex items-center gap-1 text-[11px] text-cyan-400 hover:text-cyan-300 bg-cyan-950/40 hover:bg-cyan-900/40 border border-cyan-800/40 px-2.5 py-1 rounded transition-colors"
+              >
+                {copied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                <span>{copied ? '已复制' : '复制命令'}</span>
+              </button>
+            </div>
+            <pre className="p-2.5 rounded-lg bg-slate-900 text-slate-300 text-[11px] font-mono overflow-x-auto border border-slate-800/80">
+              <code>{agentCommand}</code>
+            </pre>
+            <p className="text-[11px] text-slate-500">
+              提示：可将其加入 crontab（如 <code className="text-slate-400">*/1 * * * *</code>）实现无痛长效心跳同步。
+            </p>
+          </div>
+
+        </div>
+
+        {/* Modal Footer */}
+        <div className="flex items-center justify-end px-6 py-3 border-t border-slate-800 bg-slate-950/40">
+          <button
+            onClick={onClose}
+            className="px-4 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium transition-colors"
+          >
+            关闭
+          </button>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
