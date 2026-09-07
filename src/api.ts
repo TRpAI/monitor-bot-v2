@@ -7,6 +7,36 @@ const LOCAL_STORAGE_KEY_INCIDENTS = 'monitor_bot_incidents_v1';
 const LOCAL_STORAGE_KEY_TG = 'monitor_bot_tg_v1';
 const LOCAL_STORAGE_KEY_API_BASE = 'monitor_bot_api_base_url';
 
+// Export keys so App can persist client-side mutations to localStorage
+export const STORAGE_KEYS = {
+  nodes: LOCAL_STORAGE_KEY_NODES,
+  services: LOCAL_STORAGE_KEY_SERVICES,
+  incidents: LOCAL_STORAGE_KEY_INCIDENTS,
+  tg: LOCAL_STORAGE_KEY_TG,
+};
+
+/**
+ * Write current in-memory data to localStorage so that
+ * client-side mutations (import / delete) survive page refreshes
+ * and the fallback loadData() never re-introduces stale data.
+ */
+export function syncDataToLocalStorage(
+  nodes: MonitorNode[],
+  services: WebService[],
+  incidents: Incident[],
+  tgConfig: TelegramBotConfig,
+): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(STORAGE_KEYS.nodes, JSON.stringify(nodes));
+    window.localStorage.setItem(STORAGE_KEYS.services, JSON.stringify(services));
+    window.localStorage.setItem(STORAGE_KEYS.incidents, JSON.stringify(incidents));
+    window.localStorage.setItem(STORAGE_KEYS.tg, JSON.stringify(tgConfig));
+  } catch {
+    // Storage full or unavailable — silently ignore
+  }
+}
+
 export const getApiBase = (): string => {
   if (typeof window === 'undefined') return '';
   const custom = localStorage.getItem(LOCAL_STORAGE_KEY_API_BASE);

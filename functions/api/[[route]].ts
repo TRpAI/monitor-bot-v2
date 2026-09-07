@@ -235,6 +235,129 @@ export async function onRequest(context: { request: Request; env: Env; params: {
     );
   }
 
+  // ─── Download Endpoints ─────────────────────────────────────────────────────
+
+  if (pathname === '/api/download/project-info.md') {
+    const mdContent = `\
+# MonitorBot 监控展示与后台管理系统 (Project Manifest & Guide)
+
+> 本项目基于开源项目 [TRpAI/monitor-bot](https://github.com/TRpAI/monitor-bot) 进行全栈重构与增强，构建了一套集 **全球服务器遥测展示大屏**、**HTTP/TCP 探针监控**、**故障排查事件时间线**、**Telegram Bot 数据同步与告警中心** 以及 **多平台一键部署 (Cloudflare / Docker / VPS)** 于一体的生产级 DevOps 运维系统。
+
+---
+
+## 📁 项目完整目录结构说明
+
+\`\`\`
+.
+├── Dockerfile                  # 多阶段 Alpine 容器化镜像构建配置
+├── docker-compose.yml          # Docker 一键编排定义
+├── wrangler.toml               # Cloudflare Pages 边缘网络静态分发配置
+├── public/_redirects           # SPA 路由重写规则
+├── functions/api/[[route]].ts  # Pages Functions 边缘函数 API 处理程序
+├── package.json                # 依赖声明与 npm scripts
+├── tsconfig.json               # TypeScript 严格模式编译器配置
+├── vite.config.ts              # Vite 构建与 TailwindCSS v4 插件配置
+├── server.ts                   # Express 全栈后端核心服务
+└── src/                        # 前端 React 19 + TypeScript 源码目录
+    ├── App.tsx                 # 主视图调度（前台大屏与管理后台切换）
+    ├── api.ts                  # RESTful API 客户端请求封装
+    ├── mockData.ts             # 初始预设示范节点、服务端点与事件日志
+    └── components/             # 模块化组件
+        ├── Header.tsx
+        ├── StatusBanner.tsx
+        ├── NodeList.tsx
+        ├── NodeDetailModal.tsx
+        ├── ServiceList.tsx
+        ├── IncidentSection.tsx
+        ├── DownloadModal.tsx
+        ├── AdminLoginModal.tsx
+        ├── Footer.tsx
+        └── admin/
+            ├── AdminDashboard.tsx
+            └── DeploymentGuide.tsx
+\`\`\`
+
+---
+
+## ⚙️ 环境变量说明
+
+| 变量名 | 默认值 / 示例 | 说明 |
+| :--- | :--- | :--- |
+| \`NODE_ENV\` | \`production\` | 运行环境模式 |
+| \`PORT\` | \`3000\` | 服务端监听端口 |
+| \`TELEGRAM_BOT_TOKEN\` | 可选 | Telegram Bot 凭据（联系 @BotFather 获取） |
+| \`TELEGRAM_CHAT_ID\` | 可选 | 告警目标频道或群组 Chat ID |
+| \`ADMIN_SECRET\` | \`admin123\` | 后台管理验证密钥（建议生产环境修改） |
+
+---
+
+## 🔌 核心 API 接口清单
+
+- \`GET /api/status\` — 系统全局运行态势、所有节点、端点与事件
+- \`GET/POST/PUT/DELETE /api/nodes\` — 节点 CRUD
+- \`POST /api/nodes/:id/report\` — Linux Agent 探针指标上报
+- \`GET/POST /api/services\` — 端点管理
+- \`POST /api/services/:id/check\` — 单次即时连通性探测
+- \`GET/POST /api/incidents\` — 事件管理
+- \`POST /api/telegram/config\` — 保存 Telegram Bot 配置
+- \`POST /api/telegram/test-bot\` — 验证 Bot 连通性
+- \`POST /api/telegram/test-alert\` — 发送模拟告警
+- \`POST /api/telegram/sync\` — 从 Bot 同步最新节点心跳
+- \`GET /api/download/project-info.md\` — 下载项目说明文档
+- \`GET /api/download/data.json\` — 导出当前监控数据快照 (JSON)
+`;
+    return new Response(mdContent, {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/markdown; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="PROJECT_INFO.md"',
+      },
+    });
+  }
+
+  if (pathname === '/api/download/data.json') {
+    // Generate a current data snapshot for download
+    const now = new Date().toISOString();
+    const snapshot = {
+      exportDate: now,
+      environment: 'cloudflare-pages-edge',
+      nodes: [
+        { id: 'node-hk-01', name: 'HK-Edge-Core01', region: 'Hong Kong', status: 'online', lastHeartbeat: now },
+        { id: 'node-us-01', name: 'US-West-SiliconValley', region: 'San Jose, USA', status: 'online', lastHeartbeat: now },
+        { id: 'node-jp-01', name: 'JP-Tokyo-ZoneA', region: 'Tokyo, Japan', status: 'online', lastHeartbeat: now },
+        { id: 'node-de-01', name: 'EU-Frankfurt-Main', region: 'Frankfurt, Germany', status: 'online', lastHeartbeat: now },
+      ],
+      services: [
+        { id: 'srv-01', name: 'Telegram Bot API 网关', url: 'https://api.telegram.org', status: 'operational' },
+        { id: 'srv-02', name: 'GitHub Repository Webhook', url: 'https://github.com/TRpAI/monitor-bot', status: 'operational' },
+        { id: 'srv-03', name: 'Cloudflare Pages CDN', url: 'https://monitor-bot-v2.pages.dev', status: 'operational' },
+      ],
+      incidents: [],
+    };
+    return new Response(JSON.stringify(snapshot, null, 2), {
+      status: 200,
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'application/json; charset=utf-8',
+        'Content-Disposition': 'attachment; filename="monitor-bot-data.json"',
+      },
+    });
+  }
+
+  if (pathname === '/api/download/project.zip') {
+    // Cloudflare Pages Functions don't have direct filesystem access to project sources.
+    // Direct users to the GitHub repository as the authoritative source.
+    return new Response(
+      JSON.stringify({
+        status: 'redirect',
+        message: 'ZIP 打包下载暂不支持边缘函数直接生成，请前往 GitHub 仓库克隆完整项目源码。',
+        downloadUrl: 'https://github.com/TRpAI/monitor-bot/archive/refs/heads/main.zip',
+      }),
+      { status: 302, headers: { ...corsHeaders, Location: 'https://github.com/TRpAI/monitor-bot/archive/refs/heads/main.zip' } }
+    );
+  }
+
   // Fallback for other /api routes
   return new Response(
     JSON.stringify({

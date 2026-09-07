@@ -36,36 +36,69 @@ export const DownloadModal: React.FC<DownloadModalProps> = ({
     setDownloadingZip(true);
     setZipSuccess(false);
 
-    // Trigger browser download directly via the dedicated packaging endpoint
-    const link = document.createElement('a');
-    link.href = '/api/download/project.zip';
-    link.setAttribute('download', 'monitor-bot-full-project.zip');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    setTimeout(() => {
-      setDownloadingZip(false);
-      setZipSuccess(true);
-    }, 1500);
+    // Fetch the endpoint — it returns a 302 redirect to the GitHub release ZIP
+    fetch('/api/download/project.zip', { method: 'GET' })
+      .then(res => {
+        if (res.redirected && res.url) {
+          // Follow redirect via a real <a> download
+          const link = document.createElement('a');
+          link.href = res.url;
+          link.download = 'monitor-bot-full-project.zip';
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          setDownloadingZip(false);
+          setZipSuccess(true);
+          return;
+        }
+        return res.json().then((data: any) => {
+          if (data.downloadUrl) {
+            const link = document.createElement('a');
+            link.href = data.downloadUrl;
+            link.download = 'monitor-bot-full-project.zip';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+          }
+          setDownloadingZip(false);
+          setZipSuccess(true);
+        });
+      })
+      .catch(() => {
+        setDownloadingZip(false);
+      });
   };
 
   const handleDownloadMarkdown = () => {
-    const link = document.createElement('a');
-    link.href = '/api/download/project-info.md';
-    link.setAttribute('download', 'PROJECT_INFO.md');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    fetch('/api/download/project-info.md', { method: 'GET' })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'PROJECT_INFO.md';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('下载失败，请稍后重试'));
   };
 
   const handleDownloadJson = () => {
-    const link = document.createElement('a');
-    link.href = '/api/download/data.json';
-    link.setAttribute('download', 'monitor-bot-data.json');
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    fetch('/api/download/data.json', { method: 'GET' })
+      .then(res => res.blob())
+      .then(blob => {
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'monitor-bot-data.json';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      })
+      .catch(() => alert('下载失败，请稍后重试'));
   };
 
   return (

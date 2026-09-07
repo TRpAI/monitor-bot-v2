@@ -5,7 +5,7 @@ import { NodeList } from './components/NodeList';
 import { ServiceList } from './components/ServiceList';
 import { IncidentSection } from './components/IncidentSection';
 import { Footer } from './components/Footer';
-import { api } from './api';
+import { api, syncDataToLocalStorage } from './api';
 import { MonitorNode, WebService, Incident, TelegramBotConfig, SystemOverview } from './types';
 import { initialNodes, initialServices, initialIncidents, initialTelegramConfig } from './mockData';
 
@@ -126,8 +126,11 @@ export default function App() {
   const handleDeleteNode = async (nodeId: string) => {
     if (!confirm('确定要删除此节点吗？')) return;
     await api.deleteNode(nodeId);
-    setNodes(prev => prev.filter(n => n.id !== nodeId));
-    await loadData();
+    setNodes(prev => {
+      const next = prev.filter(n => n.id !== nodeId);
+      syncDataToLocalStorage(next, services, incidents, telegramConfig);
+      return next;
+    });
   };
 
   // Service operations
@@ -148,8 +151,11 @@ export default function App() {
   const handleDeleteService = async (serviceId: string) => {
     if (!confirm('确定要删除此端点监控吗？')) return;
     await api.deleteService(serviceId);
-    setServices(prev => prev.filter(s => s.id !== serviceId));
-    await loadData();
+    setServices(prev => {
+      const next = prev.filter(s => s.id !== serviceId);
+      syncDataToLocalStorage(nodes, next, incidents, telegramConfig);
+      return next;
+    });
   };
 
   // Incident operations
@@ -170,8 +176,11 @@ export default function App() {
   const handleDeleteIncident = async (incidentId: string) => {
     if (!confirm('确定要删除此事件记录吗？')) return;
     await api.deleteIncident(incidentId);
-    setIncidents(prev => prev.filter(i => i.id !== incidentId));
-    await loadData();
+    setIncidents(prev => {
+      const next = prev.filter(i => i.id !== incidentId);
+      syncDataToLocalStorage(nodes, services, next, telegramConfig);
+      return next;
+    });
   };
 
   // Telegram Config operations
@@ -210,7 +219,19 @@ export default function App() {
     if (data.nodes && Array.isArray(data.nodes)) setNodes(data.nodes);
     if (data.services && Array.isArray(data.services)) setServices(data.services);
     if (data.incidents && Array.isArray(data.incidents)) setIncidents(data.incidents);
-    alert('配置数据已成功导入并刷新！');
+    // Persist to localStorage so data survives page refresh / polling
+    try {
+      const tgForImport = data.telegramConfig
+        ? { ...initialTelegramConfig, ...data.telegramConfig }
+        : telegramConfig;
+      syncDataToLocalStorage(
+        data.nodes ?? nodes,
+        data.services ?? services,
+        data.incidents ?? incidents,
+        tgForImport,
+      );
+    } catch { /* ignore storage errors */ }
+    alert('配置数据已成功导入并持久化到本地存储！');
   };
 
   const handleOpenAdmin = () => {

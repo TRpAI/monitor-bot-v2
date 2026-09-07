@@ -15,13 +15,16 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    // Default admin secret is admin123 or whatever user entered
-    if (secret === 'admin123' || secret.trim().length >= 4) {
+    const trimmed = secret.trim();
+    // Require either the default secret or a custom secret of at least 8 characters
+    if (trimmed === 'admin123' || (trimmed.length >= 8)) {
       sessionStorage.setItem('monitor_admin_token', 'valid');
       onLoginSuccess();
       onClose();
+    } else if (trimmed.length > 0) {
+      setError('密钥长度不足，至少需要 8 位字符');
     } else {
-      setError('密钥错误，默认管理员密钥为 admin123');
+      setError('请输入管理密钥');
     }
   };
 
@@ -70,7 +73,7 @@ export const AdminLoginModal: React.FC<AdminLoginModalProps> = ({ isOpen, onClos
               />
             </div>
             <p className="text-[11px] text-slate-500">
-              提示：默认密钥为 <code className="text-cyan-400 font-mono">admin123</code>（可在后台或环境变量自定义）。
+              提示：默认密钥为 <code className="text-cyan-400 font-mono">admin123</code>（自定义密钥需 ≥8 位）。
             </p>
           </div>
 
