@@ -1,0 +1,9 @@
+[env.production]
+name = "monitor-bot-v2"
+compatibility_date = "2024-01-01"
+account_id = ""
+workers_dev = true
+
+[env.production.build]
+command = "npm install && npm run build"
+output_dir = "dist"

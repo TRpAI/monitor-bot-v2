@@ -1,0 +1,11 @@
+[[pages_build_env]]
+name = "NODE_VERSION"
+value = "20"
+
+[build]
+command = "npm install && npm run build"
+output_dir = "dist"
+
+[build.environment]
+NODE_VERSION = "20"
+NPM_FLAGS = "--prefer-offline"

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { testTelegramBot, syncTelegramNodes } from '../api'
+import { testTelegramBot, syncTelegramNodes } from '../../api'
 
 export default function AdminDashboard({ onBack }: { onBack: () => void }) {
   const [botToken, setBotToken] = useState('')
