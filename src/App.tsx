@@ -79,10 +79,14 @@ export default function App() {
     setIsRefreshing(false);
   }, []);
 
-  // Initial load & Polling Interval
+  // Initial load — guarantee setIsLoading(false) even on unhandled errors
   useEffect(() => {
+    let cancelled = false;
     setIsLoading(true);
-    loadData().finally(() => setIsLoading(false));
+    loadData()
+      .catch((e) => console.error('[App] initial loadData failed:', e))
+      .finally(() => { if (!cancelled) setIsLoading(false); });
+    return () => { cancelled = true; };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
@@ -129,12 +133,17 @@ export default function App() {
 
   const handleDeleteNode = async (nodeId: string) => {
     if (!confirm('确定要删除此节点吗？')) return;
-    await api.deleteNode(nodeId);
-    setNodes(prev => {
-      const next = prev.filter(n => n.id !== nodeId);
-      syncDataToLocalStorage(next, services, incidents, telegramConfig);
-      return next;
-    });
+    try {
+      await api.deleteNode(nodeId);
+      setNodes(prev => {
+        const next = prev.filter(n => n.id !== nodeId);
+        syncDataToLocalStorage(next, services, incidents, telegramConfig);
+        return next;
+      });
+    } catch (e) {
+      console.error('Failed to delete node:', e);
+      alert('删除节点失败，请重试。');
+    }
   };
 
   // Service operations
@@ -154,12 +163,17 @@ export default function App() {
 
   const handleDeleteService = async (serviceId: string) => {
     if (!confirm('确定要删除此端点监控吗？')) return;
-    await api.deleteService(serviceId);
-    setServices(prev => {
-      const next = prev.filter(s => s.id !== serviceId);
-      syncDataToLocalStorage(nodes, next, incidents, telegramConfig);
-      return next;
-    });
+    try {
+      await api.deleteService(serviceId);
+      setServices(prev => {
+        const next = prev.filter(s => s.id !== serviceId);
+        syncDataToLocalStorage(nodes, next, incidents, telegramConfig);
+        return next;
+      });
+    } catch (e) {
+      console.error('Failed to delete service:', e);
+      alert('删除服务失败，请重试。');
+    }
   };
 
   // Incident operations
@@ -179,12 +193,17 @@ export default function App() {
 
   const handleDeleteIncident = async (incidentId: string) => {
     if (!confirm('确定要删除此事件记录吗？')) return;
-    await api.deleteIncident(incidentId);
-    setIncidents(prev => {
-      const next = prev.filter(i => i.id !== incidentId);
-      syncDataToLocalStorage(nodes, services, next, telegramConfig);
-      return next;
-    });
+    try {
+      await api.deleteIncident(incidentId);
+      setIncidents(prev => {
+        const next = prev.filter(i => i.id !== incidentId);
+        syncDataToLocalStorage(nodes, services, next, telegramConfig);
+        return next;
+      });
+    } catch (e) {
+      console.error('Failed to delete incident:', e);
+      alert('删除事件失败，请重试。');
+    }
   };
 
   // Telegram Config operations

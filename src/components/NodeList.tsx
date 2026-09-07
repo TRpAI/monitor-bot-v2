@@ -25,10 +25,10 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
   const filteredNodes = useMemo(() => {
     return nodes.filter((node) => {
       const matchesSearch =
-        node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        node.host.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        node.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        node.tags.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
+        (node.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (node.host || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (node.region || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        ((node.tags || []) as string[]).some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesType = selectedType === 'all' || node.type === selectedType;
 
