@@ -1,6 +1,77 @@
 import { MonitorNode, WebService, Incident, TelegramBotConfig, SystemOverview } from './types';
 import { initialNodes, initialServices, initialIncidents, initialTelegramConfig } from './mockData';
 
+/**
+ * Normalize an API node (flat metrics + specs) into the MonitorNode type
+ * that all frontend components expect.
+ */
+function normalizeNode(raw: any): MonitorNode {
+  const region = raw.region || '';
+  // Extract 2-letter country code from region string
+  const countryCodeMatch = region.match(/\b(HK|JP|US|SG|DE|CN|UN)\b/i);
+  const countryCode = (countryCodeMatch ? countryCodeMatch[1].toUpperCase() : region.slice(0, 2).toUpperCase()) || 'UN';
+
+  const m = raw.metrics || {};
+  const sp = raw.specs || {};
+  const cpuNorm = typeof m.cpu === 'number' ? m.cpu : (m.cpu?.usagePercent ?? 0);
+  const memNorm = typeof m.memory === 'number' ? m.memory : (m.memory?.percent ?? 0);
+  const diskNorm = typeof m.disk === 'number' ? m.disk : (m.disk?.percent ?? 0);
+  const pingMs = m.ping?.latencyMs ?? Math.round((m.ping?.latencyBps ?? 0) / 1000);
+
+  return {
+    id: raw.id,
+    name: raw.name,
+    host: raw.ip || raw.host || '',
+    region,
+    countryCode,
+    type: raw.type || 'vps',
+    status: raw.status,
+    lastSeen: raw.lastHeartbeat
+      ? (() => { const d = new Date(raw.lastHeartbeat); const mins = Math.round((Date.now() - d.getTime()) / 60000); return mins < 1 ? '刚刚' : `${mins}分钟前`; })()
+      : '刚刚',
+    tags: raw.tags || [],
+    tgBotReported: raw.tgBotReported ?? false,
+    uptimePercent: raw.uptimePercent ?? 99.9,
+    metrics: {
+      cpu: {
+        usagePercent: cpuNorm,
+        cores: sp.cpuCores || 4,
+        model: sp.cpuModel || '',
+      },
+      memory: {
+        usedMb: Math.round((memNorm / 100) * (sp.ramTotalGb || 8) * 1024),
+        totalMb: (sp.ramTotalGb || 8) * 1024,
+        percent: memNorm,
+      },
+      swap: { usedMb: 0, totalMb: 0, percent: 0 },
+      disk: {
+        usedGb: sp.diskTotalGb ? Math.round((diskNorm / 100) * sp.diskTotalGb * 10) / 10 : 0,
+        totalGb: sp.diskTotalGb || 100,
+        percent: diskNorm,
+      },
+      network: {
+        upSpeedKb: Math.round((m.networkOutBps || 0) / 1000 / 8),
+        downSpeedKb: Math.round((m.networkInBps || 0) / 1000 / 8),
+        totalUpGb: 0,
+        totalDownGb: 0,
+      },
+      load: [0, 0, 0],
+      ping: { latencyMs: pingMs, lossPercent: m.ping?.packetLoss ?? 0 },
+      uptimeSeconds: 0,
+      temperatureCelsius: 0,
+      os: sp.os || '',
+      kernel: '',
+      ip: raw.ip || '',
+      history: [],
+    },
+    history90d: raw.history90Days?.map((h: any) => ({
+      date: h.date,
+      status: h.uptimePercent >= 99.5 ? 'operational' : h.uptimePercent >= 95 ? 'degraded' : 'outage',
+      uptimePercent: h.uptimePercent,
+    })) || [],
+  };
+}
+
 const LOCAL_STORAGE_KEY_NODES = 'monitor_bot_nodes_v1';
 const LOCAL_STORAGE_KEY_SERVICES = 'monitor_bot_services_v1';
 const LOCAL_STORAGE_KEY_INCIDENTS = 'monitor_bot_incidents_v1';
@@ -81,7 +152,7 @@ export const api = {
             lastUpdated: data.lastUpdated,
             telegramSync: data.telegramSync,
           },
-          nodes: data.nodes,
+          nodes: (data.nodes || []).map(normalizeNode),
           services: data.services,
           incidents: data.incidents,
         };

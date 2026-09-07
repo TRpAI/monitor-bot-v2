@@ -48,6 +48,7 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSyncingTg, setIsSyncingTg] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(30);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Check login state on mount
   useEffect(() => {
@@ -66,20 +67,23 @@ export default function App() {
       setNodes(data.nodes);
       setServices(data.services);
       setIncidents(data.incidents);
-
+    } catch (e) {
+      console.error('Failed to load status data:', e);
+    }
+    try {
       const tg = await api.getTelegramConfig();
       setTelegramConfig(tg);
     } catch (e) {
-      console.error('Failed to load status data:', e);
-    } finally {
-      setIsRefreshing(false);
+      console.error('Failed to load telegram config:', e);
     }
+    setIsRefreshing(false);
   }, []);
 
   // Initial load & Polling Interval
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    setIsLoading(true);
+    loadData().finally(() => setIsLoading(false));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (refreshInterval <= 0) return;
@@ -289,6 +293,16 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
+      {/* Initial loading overlay — prevents flash of empty/blank page */}
+      {isLoading && (
+        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 gap-4">
+          <div className="relative w-12 h-12">
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30"></div>
+            <div className="absolute inset-0 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
+          </div>
+          <p className="text-sm text-slate-400 font-mono animate-pulse">正在加载监控数据…</p>
+        </div>
+      )}
       {/* Top Sticky Header */}
       <Header
         overview={overview}
