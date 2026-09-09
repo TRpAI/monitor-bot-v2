@@ -242,6 +242,9 @@ export default function App() {
     setIsAdminView(false);
   };
 
+  // Active incidents list (memoized) - moved before isAdminView check to ensure consistent hook count
+  const activeIncidents = useMemo(() => incidents.filter(i => i.status !== 'resolved'), [incidents]);
+
   // If viewing Admin Console
   if (isAdminView) {
     return (
@@ -278,10 +281,6 @@ export default function App() {
       </ErrorBoundary>
     );
   }
-
-  // Active incidents list (memoized)
-  const activeIncidents = useMemo(() => incidents.filter(i => i.status !== 'resolved'), [incidents]);
-
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Top Sticky Header */}
