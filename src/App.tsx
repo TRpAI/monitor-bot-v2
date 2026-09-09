@@ -1,19 +1,19 @@
-import React, { useState, useEffect, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Header } from './components/Header';
 import { StatusBanner } from './components/StatusBanner';
 import { NodeList } from './components/NodeList';
 import { ServiceList } from './components/ServiceList';
 import { IncidentSection } from './components/IncidentSection';
 import { Footer } from './components/Footer';
-import { api, syncDataToLocalStorage } from './api';
+import { ErrorBoundary } from './components/ErrorBoundary';
+import { api } from './api';
 import { MonitorNode, WebService, Incident, TelegramBotConfig, SystemOverview } from './types';
 import { initialNodes, initialServices, initialIncidents, initialTelegramConfig } from './mockData';
-
-// Code-split heavy modals and administration panel
-const NodeDetailModal = lazy(() => import('./components/NodeDetailModal').then(m => ({ default: m.NodeDetailModal })));
-const AdminLoginModal = lazy(() => import('./components/AdminLoginModal').then(m => ({ default: m.AdminLoginModal })));
-const DownloadModal = lazy(() => import('./components/DownloadModal').then(m => ({ default: m.DownloadModal })));
-const AdminDashboard = lazy(() => import('./components/admin/AdminDashboard').then(m => ({ default: m.AdminDashboard })));
+import { NodeDetailModal } from './components/NodeDetailModal';
+import { AdminLoginModal } from './components/AdminLoginModal';
+import { DownloadModal } from './components/DownloadModal';
+import { AdminDashboard } from './components/admin/AdminDashboard';
+import { safeSessionStorage } from './utils/safeStorage';
 
 export default function App() {
   const [overview, setOverview] = useState<SystemOverview>({
@@ -48,13 +48,16 @@ export default function App() {
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [isSyncingTg, setIsSyncingTg] = useState(false);
   const [refreshInterval, setRefreshInterval] = useState(30);
-  const [isLoading, setIsLoading] = useState(true);
 
   // Check login state on mount
   useEffect(() => {
-    const token = sessionStorage.getItem('monitor_admin_token');
-    if (token === 'valid') {
-      setIsAdminLoggedIn(true);
+    try {
+      const token = safeSessionStorage.getItem('monitor_admin_token');
+      if (token === 'valid') {
+        setIsAdminLoggedIn(true);
+      }
+    } catch (err) {
+      console.warn('Could not read admin token:', err);
     }
   }, []);
 
@@ -67,27 +70,20 @@ export default function App() {
       setNodes(data.nodes);
       setServices(data.services);
       setIncidents(data.incidents);
-    } catch (e) {
-      console.error('Failed to load status data:', e);
-    }
-    try {
+
       const tg = await api.getTelegramConfig();
       setTelegramConfig(tg);
     } catch (e) {
-      console.error('Failed to load telegram config:', e);
+      console.error('Failed to load status data:', e);
+    } finally {
+      setIsRefreshing(false);
     }
-    setIsRefreshing(false);
   }, []);
 
-  // Initial load — guarantee setIsLoading(false) even on unhandled errors
+  // Initial load & Polling Interval
   useEffect(() => {
-    let cancelled = false;
-    setIsLoading(true);
-    loadData()
-      .catch((e) => console.error('[App] initial loadData failed:', e))
-      .finally(() => { if (!cancelled) setIsLoading(false); });
-    return () => { cancelled = true; };
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    loadData();
+  }, [loadData]);
 
   useEffect(() => {
     if (refreshInterval <= 0) return;
@@ -133,17 +129,9 @@ export default function App() {
 
   const handleDeleteNode = async (nodeId: string) => {
     if (!confirm('确定要删除此节点吗？')) return;
-    try {
-      await api.deleteNode(nodeId);
-      setNodes(prev => {
-        const next = prev.filter(n => n.id !== nodeId);
-        syncDataToLocalStorage(next, services, incidents, telegramConfig);
-        return next;
-      });
-    } catch (e) {
-      console.error('Failed to delete node:', e);
-      alert('删除节点失败，请重试。');
-    }
+    await api.deleteNode(nodeId);
+    setNodes(prev => prev.filter(n => n.id !== nodeId));
+    await loadData();
   };
 
   // Service operations
@@ -163,17 +151,9 @@ export default function App() {
 
   const handleDeleteService = async (serviceId: string) => {
     if (!confirm('确定要删除此端点监控吗？')) return;
-    try {
-      await api.deleteService(serviceId);
-      setServices(prev => {
-        const next = prev.filter(s => s.id !== serviceId);
-        syncDataToLocalStorage(nodes, next, incidents, telegramConfig);
-        return next;
-      });
-    } catch (e) {
-      console.error('Failed to delete service:', e);
-      alert('删除服务失败，请重试。');
-    }
+    await api.deleteService(serviceId);
+    setServices(prev => prev.filter(s => s.id !== serviceId));
+    await loadData();
   };
 
   // Incident operations
@@ -193,17 +173,9 @@ export default function App() {
 
   const handleDeleteIncident = async (incidentId: string) => {
     if (!confirm('确定要删除此事件记录吗？')) return;
-    try {
-      await api.deleteIncident(incidentId);
-      setIncidents(prev => {
-        const next = prev.filter(i => i.id !== incidentId);
-        syncDataToLocalStorage(nodes, services, next, telegramConfig);
-        return next;
-      });
-    } catch (e) {
-      console.error('Failed to delete incident:', e);
-      alert('删除事件失败，请重试。');
-    }
+    await api.deleteIncident(incidentId);
+    setIncidents(prev => prev.filter(i => i.id !== incidentId));
+    await loadData();
   };
 
   // Telegram Config operations
@@ -239,22 +211,17 @@ export default function App() {
   };
 
   const handleImportData = async (data: any) => {
-    if (data.nodes && Array.isArray(data.nodes)) setNodes(data.nodes);
-    if (data.services && Array.isArray(data.services)) setServices(data.services);
-    if (data.incidents && Array.isArray(data.incidents)) setIncidents(data.incidents);
-    // Persist to localStorage so data survives page refresh / polling
     try {
-      const tgForImport = data.telegramConfig
-        ? { ...initialTelegramConfig, ...data.telegramConfig }
-        : telegramConfig;
-      syncDataToLocalStorage(
-        data.nodes ?? nodes,
-        data.services ?? services,
-        data.incidents ?? incidents,
-        tgForImport,
-      );
-    } catch { /* ignore storage errors */ }
-    alert('配置数据已成功导入并持久化到本地存储！');
+      const res = await api.importData(data);
+      if (data.nodes && Array.isArray(data.nodes)) setNodes(data.nodes);
+      if (data.services && Array.isArray(data.services)) setServices(data.services);
+      if (data.incidents && Array.isArray(data.incidents)) setIncidents(data.incidents);
+      await loadData();
+      alert(res.message || '配置数据已成功导入并刷新！');
+    } catch (e: any) {
+      console.error('Import failed:', e);
+      alert('导入数据失败: ' + (e?.message || '未知错误'));
+    }
   };
 
   const handleOpenAdmin = () => {
@@ -266,7 +233,11 @@ export default function App() {
   };
 
   const handleLogoutAdmin = () => {
-    sessionStorage.removeItem('monitor_admin_token');
+    try {
+      safeSessionStorage.removeItem('monitor_admin_token');
+    } catch (err) {
+      console.warn('Could not remove admin token:', err);
+    }
     setIsAdminLoggedIn(false);
     setIsAdminView(false);
   };
@@ -274,14 +245,7 @@ export default function App() {
   // If viewing Admin Console
   if (isAdminView) {
     return (
-      <Suspense
-        fallback={
-          <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center gap-3 text-slate-400 font-mono text-sm">
-            <div className="w-8 h-8 rounded-full border-2 border-cyan-500 border-t-transparent animate-spin" />
-            <p>正在按需加载管理控制台...</p>
-          </div>
-        }
-      >
+      <ErrorBoundary onReset={() => setIsAdminView(false)}>
         <AdminDashboard
           overview={overview}
           nodes={nodes}
@@ -303,7 +267,15 @@ export default function App() {
           onImportData={handleImportData}
           onOpenDownload={() => setIsDownloadModalOpen(true)}
         />
-      </Suspense>
+        {isDownloadModalOpen && (
+          <DownloadModal
+            isOpen={isDownloadModalOpen}
+            onClose={() => setIsDownloadModalOpen(false)}
+            totalNodes={nodes.length}
+            totalServices={services.length}
+          />
+        )}
+      </ErrorBoundary>
     );
   }
 
@@ -311,17 +283,7 @@ export default function App() {
   const activeIncidents = useMemo(() => incidents.filter(i => i.status !== 'resolved'), [incidents]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
-      {/* Initial loading overlay — prevents flash of empty/blank page */}
-      {isLoading && (
-        <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950 gap-4">
-          <div className="relative w-12 h-12">
-            <div className="absolute inset-0 rounded-full border-2 border-cyan-500/30"></div>
-            <div className="absolute inset-0 rounded-full border-2 border-cyan-400 border-t-transparent animate-spin"></div>
-          </div>
-          <p className="text-sm text-slate-400 font-mono animate-pulse">正在加载监控数据…</p>
-        </div>
-      )}
+    <div className="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
       {/* Top Sticky Header */}
       <Header
         overview={overview}
@@ -377,40 +339,34 @@ export default function App() {
         onOpenDownload={() => setIsDownloadModalOpen(true)}
       />
 
-      {/* Project Download Modal (Lazy loaded on demand) */}
+      {/* Project Download Modal */}
       {isDownloadModalOpen && (
-        <Suspense fallback={null}>
-          <DownloadModal
-            isOpen={isDownloadModalOpen}
-            onClose={() => setIsDownloadModalOpen(false)}
-            totalNodes={nodes.length}
-            totalServices={services.length}
-          />
-        </Suspense>
+        <DownloadModal
+          isOpen={isDownloadModalOpen}
+          onClose={() => setIsDownloadModalOpen(false)}
+          totalNodes={nodes.length}
+          totalServices={services.length}
+        />
       )}
 
-      {/* Node Detail Drawer / Modal (Lazy loaded on demand) */}
+      {/* Node Detail Drawer / Modal */}
       {selectedNode && (
-        <Suspense fallback={null}>
-          <NodeDetailModal
-            node={selectedNode}
-            onClose={() => setSelectedNode(null)}
-          />
-        </Suspense>
+        <NodeDetailModal
+          node={selectedNode}
+          onClose={() => setSelectedNode(null)}
+        />
       )}
 
-      {/* Admin Login Modal (Lazy loaded on demand) */}
+      {/* Admin Login Modal */}
       {isAdminLoginOpen && (
-        <Suspense fallback={null}>
-          <AdminLoginModal
-            isOpen={isAdminLoginOpen}
-            onClose={() => setIsAdminLoginOpen(false)}
-            onLoginSuccess={() => {
-              setIsAdminLoggedIn(true);
-              setIsAdminView(true);
-            }}
-          />
-        </Suspense>
+        <AdminLoginModal
+          isOpen={isAdminLoginOpen}
+          onClose={() => setIsAdminLoginOpen(false)}
+          onLoginSuccess={() => {
+            setIsAdminLoggedIn(true);
+            setIsAdminView(true);
+          }}
+        />
       )}
     </div>
   );

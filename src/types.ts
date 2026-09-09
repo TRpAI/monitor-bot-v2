@@ -140,3 +140,43 @@ export interface SystemOverview {
     botUsername?: string;
   };
 }
+
+export interface CacheEnvelope<T> {
+  data: T;
+  timestamp: number;
+  version: number;
+}
+
+export interface AdminAuthToken {
+  token: string;
+  expiresAt: number; // Unix timestamp in ms
+  issuedAt: number;
+  role: 'admin';
+}
+
+export interface TelegramSyncResult {
+  success: boolean;
+  syncTime: string;
+  nodesCount?: number;
+  message: string;
+  error?: string;
+}
+
+export interface ApiStatusResult {
+  overview: SystemOverview;
+  nodes: MonitorNode[];
+  services: WebService[];
+  incidents: Incident[];
+  telegramConfig: TelegramBotConfig;
+  source: 'server' | 'cache' | 'fallback';
+  warning?: string;
+  cachedAt?: number;
+}
+
+export interface ToastNotification {
+  id: string;
+  type: 'success' | 'error' | 'warning' | 'info';
+  title: string;
+  message?: string;
+  durationMs?: number;
+}

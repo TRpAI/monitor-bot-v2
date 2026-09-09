@@ -25,10 +25,10 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
   const filteredNodes = useMemo(() => {
     return nodes.filter((node) => {
       const matchesSearch =
-        (node.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (node.host || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (node.region || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        ((node.tags || []) as string[]).some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
+        node.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.host.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.region.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        node.tags.some((t) => t.toLowerCase().includes(searchTerm.toLowerCase()));
 
       const matchesType = selectedType === 'all' || node.type === selectedType;
 
@@ -55,13 +55,13 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
-            <Server className="w-5 h-5 text-cyan-400" />
-            <h2 className="text-lg font-bold text-white tracking-tight">服务器与探针节点矩阵</h2>
-            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-800 text-slate-300">
+            <Server className="w-5 h-5 text-cyan-600 dark:text-cyan-400" />
+            <h2 className="text-lg font-bold text-slate-900 dark:text-white tracking-tight">服务器与探针节点矩阵</h2>
+            <span className="text-xs font-mono px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
               {filteredNodes.length} / {nodes.length}
             </span>
           </div>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
             各节点心跳与指标由 TRpAI/monitor-bot 探针 Agent 每 15~30 秒实时同步上报
           </p>
         </div>
@@ -75,7 +75,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
               placeholder="搜索节点、IP、机房或标签..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="bg-slate-900 border border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-200 placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-500/50 w-44 sm:w-56"
+              className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-hidden focus:border-cyan-500/50 w-44 sm:w-56"
             />
           </div>
 
@@ -84,7 +84,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
             aria-label="筛选节点类型"
             value={selectedType}
             onChange={(e) => setSelectedType(e.target.value)}
-            className="bg-slate-900 border border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-300 focus:outline-hidden focus:border-cyan-500/50 cursor-pointer"
+            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 dark:text-slate-300 focus:outline-hidden focus:border-cyan-500/50 cursor-pointer"
           >
             <option value="all">所有类型</option>
             <option value="vps">VPS 云服务器</option>
@@ -94,18 +94,18 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
           </select>
 
           {/* View Mode Toggle */}
-          <div className="flex items-center bg-slate-900 border border-slate-800 rounded-lg p-0.5">
+          <div className="flex items-center bg-slate-100 dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-0.5">
             <button
               onClick={() => setViewMode('grid')}
               aria-label="网格视图"
-              className={`p-1.5 rounded ${viewMode === 'grid' ? 'bg-slate-800 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-2xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
             </button>
             <button
               onClick={() => setViewMode('table')}
               aria-label="列表视图"
-              className={`p-1.5 rounded ${viewMode === 'table' ? 'bg-slate-800 text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}
+              className={`p-1.5 rounded transition-colors ${viewMode === 'table' ? 'bg-white dark:bg-slate-800 text-cyan-600 dark:text-cyan-400 shadow-2xs' : 'text-slate-500 hover:text-slate-700 dark:hover:text-slate-300'}`}
             >
               <List className="w-3.5 h-3.5" />
             </button>
@@ -124,7 +124,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
               <div
                 key={node.id}
                 onClick={() => onSelectNode(node)}
-                className="group relative p-5 rounded-xl bg-slate-900/60 border border-slate-800/80 hover:border-cyan-500/40 hover:bg-slate-900/90 transition-all duration-200 cursor-pointer shadow-sm hover:shadow-cyan-950/40"
+                className="group relative p-5 rounded-xl bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 hover:border-cyan-400 dark:hover:border-cyan-500/40 hover:bg-slate-50/50 dark:hover:bg-slate-900/90 transition-all duration-200 cursor-pointer shadow-xs dark:shadow-sm"
               >
                 {/* Header row */}
                 <div className="flex items-start justify-between gap-3 mb-3">
@@ -132,16 +132,16 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                     <span className="text-xl shrink-0" title={node.region}>{flag}</span>
                     <div>
                       <div className="flex items-center gap-1.5">
-                        <h3 className="font-semibold text-sm text-slate-100 group-hover:text-cyan-300 transition-colors">
+                        <h3 className="font-semibold text-sm text-slate-800 dark:text-slate-100 group-hover:text-cyan-600 dark:group-hover:text-cyan-300 transition-colors">
                           {node.name}
                         </h3>
                         {node.tgBotReported && (
-                          <span title="通过 TRpAI/monitor-bot 机器人上报" className="text-cyan-400">
+                          <span title="通过 TRpAI/monitor-bot 机器人上报" className="text-cyan-600 dark:text-cyan-400">
                             <Bot className="w-3.5 h-3.5" />
                           </span>
                         )}
                       </div>
-                      <p className="text-[11px] text-slate-400 truncate max-w-[180px] font-mono">
+                      <p className="text-[11px] text-slate-500 dark:text-slate-400 truncate max-w-[180px] font-mono">
                         {node.region}
                       </p>
                     </div>
@@ -154,7 +154,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                     </span>
                     <span
                       className={`w-2.5 h-2.5 rounded-full ${
-                        isOnline ? 'bg-emerald-400 shadow-sm shadow-emerald-500/50' : 'bg-rose-500'
+                        isOnline ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-rose-500'
                       }`}
                     />
                   </div>
@@ -162,19 +162,19 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
 
                 {/* Tags */}
                 <div className="flex flex-wrap gap-1.5 mb-4">
-                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800/90 text-slate-300 border border-slate-700/60">
+                  <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
                     {node.type.toUpperCase()}
                   </span>
                   {node.tags.slice(0, 2).map((tag, idx) => (
                     <span
                       key={idx}
-                      className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-950/50 text-cyan-400 border border-cyan-800/40"
+                      className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/40"
                     >
                       {tag}
                     </span>
                   ))}
                   {node.metrics.temperatureCelsius && (
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/40 text-amber-300 border border-amber-800/40 flex items-center gap-0.5">
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border border-amber-200 dark:border-amber-800/40 flex items-center gap-0.5">
                       <Thermometer className="w-3 h-3" />
                       <span>{node.metrics.temperatureCelsius}°C</span>
                     </span>
@@ -182,19 +182,19 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                 </div>
 
                 {/* Metrics Progress Bars */}
-                <div className="space-y-2.5 pt-1 border-t border-slate-800/60 text-xs">
+                <div className="space-y-2.5 pt-1 border-t border-slate-100 dark:border-slate-800/60 text-xs">
                   {/* CPU */}
                   <div>
-                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
                       <span className="flex items-center gap-1 font-mono">
-                        <Cpu className="w-3 h-3 text-cyan-400" />
+                        <Cpu className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
                         <span>CPU ({node.metrics.cpu.cores}核)</span>
                       </span>
-                      <span className="font-mono text-slate-200 font-medium">
+                      <span className="font-mono text-slate-700 dark:text-slate-200 font-medium">
                         {node.metrics.cpu.usagePercent}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${getLoadBarColor(node.metrics.cpu.usagePercent)}`}
                         style={{ width: `${Math.min(100, node.metrics.cpu.usagePercent)}%` }}
@@ -204,16 +204,16 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
 
                   {/* RAM */}
                   <div>
-                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
                       <span className="flex items-center gap-1 font-mono">
-                        <Server className="w-3 h-3 text-indigo-400" />
+                        <Server className="w-3 h-3 text-indigo-600 dark:text-indigo-400" />
                         <span>内存 ({Math.round(node.metrics.memory.usedMb / 1024 * 10) / 10}G / {Math.round(node.metrics.memory.totalMb / 1024)}G)</span>
                       </span>
-                      <span className="font-mono text-slate-200 font-medium">
+                      <span className="font-mono text-slate-700 dark:text-slate-200 font-medium">
                         {node.metrics.memory.percent}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-300 ${getLoadBarColor(node.metrics.memory.percent)}`}
                         style={{ width: `${Math.min(100, node.metrics.memory.percent)}%` }}
@@ -223,16 +223,16 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
 
                   {/* Disk */}
                   <div>
-                    <div className="flex justify-between text-[11px] text-slate-400 mb-1">
+                    <div className="flex justify-between text-[11px] text-slate-500 dark:text-slate-400 mb-1">
                       <span className="flex items-center gap-1 font-mono">
-                        <HardDrive className="w-3 h-3 text-emerald-400" />
+                        <HardDrive className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
                         <span>存储 ({node.metrics.disk.usedGb}G / {node.metrics.disk.totalGb}G)</span>
                       </span>
-                      <span className="font-mono text-slate-200 font-medium">
+                      <span className="font-mono text-slate-700 dark:text-slate-200 font-medium">
                         {node.metrics.disk.percent}%
                       </span>
                     </div>
-                    <div className="w-full bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
+                    <div className="w-full bg-slate-100 dark:bg-slate-800/80 rounded-full h-1.5 overflow-hidden">
                       <div
                         className="h-full bg-emerald-500 rounded-full transition-all duration-300"
                         style={{ width: `${Math.min(100, node.metrics.disk.percent)}%` }}
@@ -242,19 +242,19 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                 </div>
 
                 {/* Footer Bandwidth & Inspect action */}
-                <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-400">
+                <div className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                   <div className="flex items-center gap-3 font-mono">
-                    <span className="flex items-center gap-0.5 text-cyan-400">
+                    <span className="flex items-center gap-0.5 text-cyan-600 dark:text-cyan-400">
                       <ArrowUp className="w-3 h-3" />
                       <span>{node.metrics.network.upSpeedKb > 1000 ? `${(node.metrics.network.upSpeedKb / 1024).toFixed(1)}MB/s` : `${node.metrics.network.upSpeedKb}KB/s`}</span>
                     </span>
-                    <span className="flex items-center gap-0.5 text-indigo-400">
+                    <span className="flex items-center gap-0.5 text-indigo-600 dark:text-indigo-400">
                       <ArrowDown className="w-3 h-3" />
                       <span>{node.metrics.network.downSpeedKb > 1000 ? `${(node.metrics.network.downSpeedKb / 1024).toFixed(1)}MB/s` : `${node.metrics.network.downSpeedKb}KB/s`}</span>
                     </span>
                   </div>
 
-                  <span className="inline-flex items-center gap-0.5 text-xs text-cyan-400 group-hover:translate-x-0.5 transition-transform">
+                  <span className="inline-flex items-center gap-0.5 text-xs text-cyan-600 dark:text-cyan-400 group-hover:translate-x-0.5 transition-transform">
                     <span>详情</span>
                     <ChevronRight className="w-3.5 h-3.5" />
                   </span>
@@ -267,9 +267,9 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
 
       {/* Table Mode */}
       {viewMode === 'table' && (
-        <div className="overflow-x-auto rounded-xl border border-slate-800 bg-slate-900/60">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-slate-400 font-mono border-b border-slate-800">
+        <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900/60 shadow-xs">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50 dark:bg-slate-950/80 text-slate-500 dark:text-slate-400 font-mono border-b border-slate-200 dark:border-slate-800">
               <tr>
                 <th className="py-3 px-4">节点名称</th>
                 <th className="py-3 px-4">区域 / IP</th>
@@ -282,25 +282,25 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                 <th className="py-3 px-4 text-right">操作</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
               {filteredNodes.map((node) => (
                 <tr
                   key={node.id}
                   onClick={() => onSelectNode(node)}
-                  className="hover:bg-slate-800/40 cursor-pointer transition-colors"
+                  className="hover:bg-slate-50 dark:hover:bg-slate-800/40 cursor-pointer transition-colors"
                 >
-                  <td className="py-3 px-4 font-semibold text-slate-100 flex items-center gap-2">
+                  <td className="py-3 px-4 font-semibold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                     <span>{countryFlagMap[node.countryCode] || '🌐'}</span>
                     <span>{node.name}</span>
                   </td>
-                  <td className="py-3 px-4 text-slate-400 font-mono">
-                    {node.region} <span className="text-slate-500">({node.host})</span>
+                  <td className="py-3 px-4 text-slate-500 dark:text-slate-400 font-mono">
+                    {node.region} <span className="text-slate-400 dark:text-slate-500">({node.host})</span>
                   </td>
-                  <td className="py-3 px-4 text-slate-300 font-mono text-[11px]">
+                  <td className="py-3 px-4 text-slate-600 dark:text-slate-300 font-mono text-[11px]">
                     {node.metrics.os}
                   </td>
                   <td className="py-3 px-4 font-mono">
-                    <span className={node.metrics.cpu.usagePercent > 80 ? 'text-rose-400' : 'text-cyan-400'}>
+                    <span className={node.metrics.cpu.usagePercent > 80 ? 'text-rose-500 dark:text-rose-400' : 'text-cyan-600 dark:text-cyan-400'}>
                       {node.metrics.cpu.usagePercent}%
                     </span>
                   </td>
@@ -310,7 +310,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                   <td className="py-3 px-4 font-mono">
                     {node.metrics.disk.percent}%
                   </td>
-                  <td className="py-3 px-4 font-mono text-slate-400">
+                  <td className="py-3 px-4 font-mono text-slate-500 dark:text-slate-400">
                     ↑ {node.metrics.network.upSpeedKb}KB/s | ↓ {node.metrics.network.downSpeedKb}KB/s
                   </td>
                   <td className="py-3 px-4">
@@ -324,7 +324,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                         e.stopPropagation();
                         onSelectNode(node);
                       }}
-                      className="text-cyan-400 hover:text-cyan-300 text-xs"
+                      className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-300 text-xs font-medium"
                     >
                       详情
                     </button>

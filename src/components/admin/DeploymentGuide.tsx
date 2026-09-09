@@ -6,7 +6,13 @@ export const DeploymentGuide: React.FC = () => {
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const copyText = (key: string, text: string) => {
-    navigator.clipboard.writeText(text);
+    try {
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).catch(() => {});
+      }
+    } catch {
+      // ignore
+    }
     setCopiedKey(key);
     setTimeout(() => setCopiedKey(null), 2000);
   };
