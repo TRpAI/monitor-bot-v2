@@ -90,7 +90,7 @@ export const IncidentSection: React.FC<IncidentSectionProps> = memo(({ incidents
                 </div>
 
                 <div className="border-l-2 border-amber-400/40 dark:border-amber-500/30 pl-4 space-y-3 my-2">
-                  {inc.updates.map((upd) => (
+                  {(inc.updates || []).map((upd) => (
                     <div key={upd.id} className="text-xs space-y-1">
                       <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400 font-mono text-[11px]">
                         <Clock className="w-3 h-3" />
@@ -130,7 +130,7 @@ export const IncidentSection: React.FC<IncidentSectionProps> = memo(({ incidents
 
               {/* Updates timeline */}
               <div className="border-l-2 border-slate-200 dark:border-slate-800 pl-4 space-y-3 pt-1">
-                {inc.updates.map((upd) => (
+                {(inc.updates || []).map((upd) => (
                   <div key={upd.id} className="text-xs space-y-0.5">
                     <div className="flex items-center gap-2 text-slate-500 font-mono text-[11px]">
                       <span>{upd.timestamp}</span>

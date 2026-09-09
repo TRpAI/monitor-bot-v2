@@ -165,7 +165,7 @@ export const NodeList: React.FC<NodeListProps> = memo(({ nodes, onSelectNode }) 
                   <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800/90 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700/60">
                     {node.type.toUpperCase()}
                   </span>
-                  {node.tags.slice(0, 2).map((tag, idx) => (
+                  {(node.tags || []).slice(0, 2).map((tag, idx) => (
                     <span
                       key={idx}
                       className="text-[10px] px-1.5 py-0.5 rounded bg-cyan-50 dark:bg-cyan-950/50 text-cyan-700 dark:text-cyan-400 border border-cyan-200 dark:border-cyan-800/40"
