@@ -335,7 +335,7 @@ export default function App() {
       {/* Footer */}
       <Footer
         onOpenAdmin={handleOpenAdmin}
-        botUsername={overview.telegramSync.botUsername}
+        botUsername={overview.telegramSync?.botUsername}
         onOpenDownload={() => setIsDownloadModalOpen(true)}
       />
 

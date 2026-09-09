@@ -82,7 +82,7 @@ export const StatusBanner: React.FC<StatusBannerProps> = memo(({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 dark:bg-emerald-400" />
               </div>
               <p className="text-[11px] text-slate-500 dark:text-slate-400 font-mono">
-                {overview.telegramSync.botUsername || '@TRpAI_MonitorBot'}
+                {overview.telegramSync?.botUsername || '@TRpAI_MonitorBot'}
               </p>
             </div>
             <button
@@ -156,7 +156,7 @@ export const StatusBanner: React.FC<StatusBannerProps> = memo(({
               <Bot className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
             </div>
             <div className="text-base font-bold font-mono text-slate-800 dark:text-slate-200 truncate">
-              {overview.telegramSync.lastSyncTime ? overview.telegramSync.lastSyncTime.split(' ')[1] : '实时监听中'}
+              {overview.telegramSync?.lastSyncTime ? overview.telegramSync?.lastSyncTime.split(' ')[1] : '实时监听中'}
             </div>
             <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-2 font-mono truncate">
               通道状态: <span className="text-cyan-600 dark:text-cyan-400">双向长轮询就绪</span>
