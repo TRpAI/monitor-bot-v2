@@ -20,12 +20,15 @@ export class ErrorBoundary extends Component<Props, State> {
   };
 
   public static getDerivedStateFromError(error: Error): State {
+    console.error('[ErrorBoundary] Caught error:', error);
     return { hasError: true, error, stack: null };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error('Uncaught error in component tree:', error);
-    console.error('Component stack:', errorInfo.componentStack);
+    console.error('[ErrorBoundary] Full error details:');
+    console.error('  Message:', error.message);
+    console.error('  Stack:', error.stack);
+    console.error('  Component stack:', errorInfo.componentStack);
     this.setState({ stack: errorInfo.componentStack });
   }
 
