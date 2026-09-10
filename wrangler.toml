@@ -2,14 +2,5 @@ name = "monitor-bot-web"
 compatibility_date = "2024-09-01"
 pages_build_output_dir = "dist"
 
-# Environment variables for Cloudflare Pages/Workers
 [vars]
 ENVIRONMENT = "production"
-# TELEGRAM_BOT_TOKEN = "your_telegram_bot_token"
-# TELEGRAM_CHAT_ID = "your_telegram_chat_id"
-# ADMIN_SECRET = "admin123"
-
-# Cloudflare Workers Build Configuration (Optional if deployed as full Worker)
-[build]
-command = "npm run build"
-watch_dir = "src"
