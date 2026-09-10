@@ -1314,3 +1314,4 @@ const IncidentEditModal: React.FC<{
 };
 
 export default AdminDashboard;
+// Layout fix applied
