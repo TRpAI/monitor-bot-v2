@@ -1317,3 +1317,5 @@ const IncidentEditModal: React.FC<{
 export default AdminDashboard;
 
 // Layout fix v2: Ensuring min-w-0 and max-w-[200px] are applied
+
+// Layout fix v3: Force rebuild to apply min-w-0 and max-w-[200px]
