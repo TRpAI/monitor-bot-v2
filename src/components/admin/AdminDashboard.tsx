@@ -174,6 +174,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
       
       {/* Top Admin Navigation Bar */}
       <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-30 shadow-xs">
+      {/* Layout fix: Added min-w-0 shrink-0 to prevent button compression */}
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-14 gap-2 sm:gap-4">
             
